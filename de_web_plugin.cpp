@@ -87,6 +87,7 @@ static const SupportedDevice supportedDevices[] = {
     { VENDOR_CENTRALITE, "Motion Sensor-A", emberMacPrefix },
     { VENDOR_CENTRALITE, "3325-S", emberMacPrefix },
     { VENDOR_CENTRALITE, "3321-S", emberMacPrefix },
+    { VENDOR_CENTRALITE, "3328-G", emberMacPrefix },
     { VENDOR_NONE, "LM_",  tiMacPrefix },
     { VENDOR_NONE, "LMHT_", tiMacPrefix },
     { VENDOR_NONE, "IR_", tiMacPrefix },
