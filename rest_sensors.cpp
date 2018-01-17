@@ -1419,6 +1419,9 @@ void DeRestPluginPrivate::handleSensorEvent(const Event &e)
     {
         return;
     }
+
+    DBG_Printf(DBG_INFO, "handleSensorEvent(%s)\n", qPrintable(sensor->modelId()));
+
     QDateTime now = QDateTime::currentDateTime();
 
     // speedup sensor state check
