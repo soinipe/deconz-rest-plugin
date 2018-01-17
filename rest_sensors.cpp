@@ -1437,7 +1437,7 @@ void DeRestPluginPrivate::handleSensorEvent(const Event &e)
             if (sensor->lastStatePush.isValid() &&
             item->lastSet() < sensor->lastStatePush)
             {
-                DBG_Printf(DBG_INFO, "discard sensor state push for %s (already pushed)\n", e.what());
+                DBG_Printf(DBG_INFO, "discard sensor %s state push for %s (already pushed)\n", qPrintable(sensor->modelId()), e.what());
                 return; // already pushed
             }
 
