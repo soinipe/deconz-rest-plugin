@@ -623,7 +623,7 @@ bool DeRestPluginPrivate::sendConfigureReportingRequest(BindingTask &bt, const s
             {
                 stream << rq.reportableChange8bit;
             }
-            DBG_Printf(DBG_INFO_L2, "configure reporting for 0x%016llX, attribute 0x%04X/0x%04X\n", bt.restNode->address().ext(), bt.binding.clusterId, rq.attributeId);
+            DBG_Printf(DBG_INFO, "configure reporting for 0x%016llX, attribute 0x%04X/0x%04X\n", bt.restNode->address().ext(), bt.binding.clusterId, rq.attributeId);
         }
     }
 
@@ -947,7 +947,7 @@ void DeRestPluginPrivate::checkLightBindingsForAttributeReporting(LightNode *lig
                 }
                 else
                 {
-                    DBG_Printf(DBG_INFO_L2, "create binding for attribute reporting of cluster 0x%04X\n", i->id());
+                    DBG_Printf(DBG_INFO, "create binding for attribute reporting of cluster 0x%04X\n", i->id());
                     queueBindingTask(bt);
                     tasksAdded++;
                 }
@@ -1006,7 +1006,9 @@ void DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
         sensor->modelId() == QLatin1String("SML001") ||
         sensor->modelId().startsWith(QLatin1String("RWL02")) ||
         // IKEA
-        sensor->modelId().startsWith(QLatin1String("TRADFRI")))
+        sensor->modelId().startsWith(QLatin1String("TRADFRI")) ||
+        // Centralite
+        sensor->modelId().startsWith(QLatin1String("3328-G")))
     {
         endDeviceSupported = true;
         sensor->setMgmtBindSupported(false);
@@ -1014,7 +1016,7 @@ void DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
 
     if (!endDeviceSupported && sensor->node()->isEndDevice())
     {
-        DBG_Printf(DBG_INFO_L2, "don't create binding for attribute reporting of end-device %s\n", qPrintable(sensor->name()));
+        DBG_Printf(DBG_INFO, "don't create binding for attribute reporting of end-device %s\n", qPrintable(sensor->name()));
         return;
     }
 
@@ -1023,7 +1025,7 @@ void DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
     {
         if (sensor->modelId().startsWith(QLatin1String("FLS-")))
         {
-            DBG_Printf(DBG_INFO_L2, "don't check binding for attribute reporting of %s (otau busy)\n", qPrintable(sensor->name()));
+            DBG_Printf(DBG_INFO, "don't check binding for attribute reporting of %s (otau busy)\n", qPrintable(sensor->name()));
             return;
         }
     }
@@ -1103,7 +1105,7 @@ void DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
         if (val.timestampLastReport.isValid() &&
             val.timestampLastReport.secsTo(now) < (60 * 45)) // got update in timely manner
         {
-            DBG_Printf(DBG_INFO_L2, "binding for attribute reporting of cluster 0x%04X seems to be active\n", (*i));
+            DBG_Printf(DBG_INFO, "binding for attribute reporting of cluster 0x%04X seems to be active\n", (*i));
             continue;
         }
 
@@ -1144,7 +1146,7 @@ void DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
         case VENDOR_CLUSTER_ID:
         case BASIC_CLUSTER_ID:
         {
-            DBG_Printf(DBG_INFO_L2, "0x%016llX (%s) create binding for attribute reporting of cluster 0x%04X on endpoint 0x%02X\n",
+            DBG_Printf(DBG_INFO, "0x%016llX (%s) create binding for attribute reporting of cluster 0x%04X on endpoint 0x%02X\n",
                        sensor->address().ext(), qPrintable(sensor->modelId()), (*i), srcEndpoint);
 
             BindingTask bindingTask;
@@ -1213,7 +1215,7 @@ void DeRestPluginPrivate::checkSensorBindingsForClientClusters(Sensor *sensor)
     QDateTime now = QDateTime::currentDateTime();
     if (sensor->node()->isEndDevice() && sensor->lastRx().secsTo(now) > 10)
     {
-        DBG_Printf(DBG_INFO, "skip check bindings for client clusters (end-device might sleep)\n");
+      DBG_Printf(DBG_INFO, "skip check bindings for client clusters (end-device %s might sleep)\n", qPrintable(sensor->modelId()));
         return;
     }
 
@@ -1274,6 +1276,7 @@ void DeRestPluginPrivate::checkSensorBindingsForClientClusters(Sensor *sensor)
     }
     else
     {
+        DBG_Printf(DBG_INFO, "No binding created for  %s\n", qPrintable(sensor->modelId()));
         return;
     }
 
@@ -1295,7 +1298,7 @@ void DeRestPluginPrivate::checkSensorBindingsForClientClusters(Sensor *sensor)
 
     for (; i != end; ++i)
     {
-        DBG_Printf(DBG_INFO_L2, "0x%016llX (%s) create binding for client cluster 0x%04X on endpoint 0x%02X\n",
+        DBG_Printf(DBG_INFO, "0x%016llX (%s) create binding for client cluster 0x%04X on endpoint 0x%02X\n",
                    sensor->address().ext(), qPrintable(sensor->modelId()), (*i), sensor->fingerPrint().endpoint);
 
         BindingTask bindingTask;
@@ -1571,7 +1574,7 @@ void DeRestPluginPrivate::bindingTimerFired()
             else
             {
                 // too harsh?
-                DBG_Printf(DBG_INFO_L2, "failed to send bind/unbind request. drop\n");
+                DBG_Printf(DBG_INFO, "failed to send bind/unbind request. drop\n");
                 i->state = BindingTask::StateFinished;
             }
         }
@@ -1585,19 +1588,19 @@ void DeRestPluginPrivate::bindingTimerFired()
                 {
                     if (i->restNode && !i->restNode->isAvailable())
                     {
-                        DBG_Printf(DBG_INFO_L2, "giveup binding srcAddr: %llX (not available)\n", i->binding.srcAddress);
+                        DBG_Printf(DBG_INFO, "giveup binding srcAddr: %llX (not available)\n", i->binding.srcAddress);
                         i->state = BindingTask::StateFinished;
                     }
                     else
                     {
-                        DBG_Printf(DBG_INFO_L2, "binding/unbinding timeout srcAddr: %llX, retry\n", i->binding.srcAddress);
+                        DBG_Printf(DBG_INFO, "binding/unbinding timeout srcAddr: %llX, retry\n", i->binding.srcAddress);
                         i->state = BindingTask::StateIdle;
                         i->timeout = BindingTask::Timeout;
                     }
                 }
                 else
                 {
-                    DBG_Printf(DBG_INFO_L2, "giveup binding srcAddr: %llX\n", i->binding.srcAddress);
+                    DBG_Printf(DBG_INFO, "giveup binding srcAddr: %llX\n", i->binding.srcAddress);
                     i->state = BindingTask::StateFinished;
                 }
             }
@@ -1637,7 +1640,7 @@ void DeRestPluginPrivate::bindingTimerFired()
                     }
                     i->timeout = BindingTask::Timeout;
 
-                    DBG_Printf(DBG_INFO_L2, "%s check timeout, retries = %d (srcAddr: 0x%016llX cluster: 0x%04X)\n",
+                    DBG_Printf(DBG_INFO, "%s check timeout, retries = %d (srcAddr: 0x%016llX cluster: 0x%04X)\n",
                                (i->action == BindingTask::ActionBind ? "bind" : "unbind"), i->retries, i->binding.srcAddress, i->binding.clusterId);
 
                     bindingQueue.push_back(*i);
@@ -1646,8 +1649,8 @@ void DeRestPluginPrivate::bindingTimerFired()
                 }
                 else
                 {
-                    DBG_Printf(DBG_INFO_L2, "giveup binding\n");
-                    DBG_Printf(DBG_INFO_L2, "giveup %s (srcAddr: 0x%016llX cluster: 0x%04X)\n",
+                    DBG_Printf(DBG_INFO, "giveup binding\n");
+                    DBG_Printf(DBG_INFO, "giveup %s (srcAddr: 0x%016llX cluster: 0x%04X)\n",
                                (i->action == BindingTask::ActionBind ? "bind" : "unbind"), i->binding.srcAddress, i->binding.clusterId);
                     i->state = BindingTask::StateFinished;
                 }
@@ -1826,7 +1829,7 @@ void DeRestPluginPrivate::bindingToRuleTimerFired()
         }
         else
         {
-            DBG_Printf(DBG_INFO_L2, "Binding to Rule no LightNode found for dstAddress: %s\n",
+            DBG_Printf(DBG_INFO, "Binding to Rule no LightNode found for dstAddress: %s\n",
                        qPrintable(QString("0x%1").arg(bnd.dstAddress.ext, 16,16, QChar('0'))));
             return;
         }

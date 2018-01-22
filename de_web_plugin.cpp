@@ -3159,8 +3159,13 @@ void DeRestPluginPrivate::addSensorNode(const deCONZ::Node *node, const SensorFi
 
     if (sensorNode.manufacturer().isEmpty())
     {
+        DBG_Printf(DBG_INFO, "Failure: manufacturer is required\n");
         return; // required
     }
+    else
+    {
+        DBG_Printf(DBG_INFO, "Manufacturer set to %s\n", qPrintable(sensorNode.manufacturer()));
+    }	
 
     QString uid = generateUniqueId(sensorNode.address().ext(), sensorNode.fingerPrint().endpoint, clusterId);
     sensorNode.setUniqueId(uid);
