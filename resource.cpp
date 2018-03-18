@@ -31,32 +31,41 @@ const char *RAttrType = "attr/type";
 const char *RAttrClass = "attr/class";
 const char *RAttrUniqueId = "attr/uniqueid";
 
+const char *RStateAlarm = "state/alarm";
 const char *RStateAlert = "state/alert";
 const char *RStateAllOn = "state/all_on";
 const char *RStateAnyOn = "state/any_on";
 const char *RStateBri = "state/bri";
 const char *RStateButtonEvent = "state/buttonevent";
+const char *RStateCarbonMonoxide = "state/carbonmonoxide";
 const char *RStateColorMode = "state/colormode";
+const char *RStateConsumption = "state/consumption";
+const char *RStateCurrent = "state/current";
 const char *RStateCt = "state/ct";
 const char *RStateDark = "state/dark";
 const char *RStateDaylight = "state/daylight";
 const char *RStateEffect = "state/effect";
+const char *RStateFire = "state/fire";
 const char *RStateFlag = "state/flag";
 const char *RStateHue = "state/hue";
 const char *RStateHumidity = "state/humidity";
 const char *RStateLastUpdated = "state/lastupdated";
 const char *RStateLightLevel = "state/lightlevel";
+const char *RStateLowBattery = "state/lowbattery";
 const char *RStateLux = "state/lux";
 const char *RStateOn = "state/on";
 const char *RStateOpen = "state/open";
 const char *RStatePresence = "state/presence";
 const char *RStatePressure = "state/pressure";
+const char *RStatePower = "state/power";
 const char *RStateReachable = "state/reachable";
 const char *RStateSat = "state/sat";
 const char *RStateStatus = "state/status";
+const char *RStateTampered = "state/tampered";
 const char *RStateTemperature = "state/temperature";
+const char *RStateVoltage = "state/voltage";
+const char *RStateWater = "state/water";
 const char *RStateX = "state/x";
-const char *RStateXy = "state/xy";
 const char *RStateY = "state/y";
 
 const char *RConfigAlert = "config/alert";
@@ -65,12 +74,14 @@ const char *RConfigColorCapabilities = "config/colorcapabilities";
 const char *RConfigCtMin = "config/ctmin";
 const char *RConfigCtMax = "config/ctmax";
 const char *RConfigConfigured = "config/configured";
+const char *RConfigDelay = "config/delay";
 const char *RConfigDuration = "config/duration";
 const char *RConfigGroup = "config/group";
 const char *RConfigLat = "config/lat";
 const char *RConfigLedIndication = "config/ledindication";
 const char *RConfigLocalTime = "config/localtime";
 const char *RConfigLong = "config/long";
+const char *RConfigOffset = "config/offset";
 const char *RConfigOn = "config/on";
 const char *RConfigPending = "config/pending";
 const char *RConfigReachable = "config/reachable";
@@ -78,6 +89,7 @@ const char *RConfigSensitivity = "config/sensitivity";
 const char *RConfigSensitivityMax = "config/sensitivitymax";
 const char *RConfigSunriseOffset = "config/sunriseoffset";
 const char *RConfigSunsetOffset = "config/sunsetoffset";
+const char *RConfigTemperature = "config/temperature";
 const char *RConfigTholdDark = "config/tholddark";
 const char *RConfigTholdOffset = "config/tholdoffset";
 const char *RConfigUrl = "config/url";
@@ -99,30 +111,40 @@ void initResourceDescriptors()
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeString, RAttrClass));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeString, RAttrUniqueId));
 
+    rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStateAlarm));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeString, RStateAlert));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStateAllOn));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStateAnyOn));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt8, RStateBri));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeInt32, RStateButtonEvent));
+    rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStateCarbonMonoxide));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeString, RStateColorMode));
+    rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeInt64, RStateConsumption, 0, 0xffffffffffff));
+    rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt16, RStateCurrent));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt16, RStateCt));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStateDark));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStateDaylight));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeString, RStateEffect));
+    rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStateFire));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStateFlag));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt16, RStateHue));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt16, RStateHumidity, 0, 10000));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeTime, RStateLastUpdated));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt16, RStateLightLevel, 0, 0xfffe));
+    rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStateLowBattery));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt32, RStateLux));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStateOn));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStateOpen));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStatePresence));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeInt16, RStatePressure, 0, 32767));
+    rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeInt16, RStatePower));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStateReachable));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt8, RStateSat));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeInt32, RStateStatus));
+    rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStateTampered));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeInt16, RStateTemperature, -27315, 32767));
+    rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt16, RStateVoltage));
+    rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RStateWater));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt16, RStateX));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt16, RStateY));
 
@@ -132,12 +154,14 @@ void initResourceDescriptors()
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt16, RConfigCtMin));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt16, RConfigCtMax));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RConfigConfigured));
+    rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt16, RConfigDelay));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt16, RConfigDuration));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeString, RConfigGroup));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeString, RConfigLat));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RConfigLedIndication));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeTime, RConfigLocalTime));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeString, RConfigLong));
+    rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeInt16, RConfigOffset, -500, 500));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RConfigOn));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt8, RConfigPending));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeBool, RConfigReachable));
@@ -145,6 +169,7 @@ void initResourceDescriptors()
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt8, RConfigSensitivityMax));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeInt8, RConfigSunriseOffset, -120, 120));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeInt8, RConfigSunsetOffset, -120, 120));
+    rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeInt16, RConfigTemperature, -27315, 32767));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt16, RConfigTholdDark, 0, 0xfffe));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeUInt16, RConfigTholdOffset, 1, 0xfffe));
     rItemDescriptors.emplace_back(ResourceItemDescriptor(DataTypeString, RConfigUrl));
@@ -323,6 +348,13 @@ bool ResourceItem::setValue(qint64 val)
 
 bool ResourceItem::setValue(const QVariant &val)
 {
+    if (!val.isValid())
+    {
+        m_lastSet = QDateTime();
+        m_lastChanged = m_lastSet;
+        return true;
+    }
+
     QDateTime now = QDateTime::currentDateTime();
 
     if (m_rid.type == DataTypeString ||
@@ -436,6 +468,11 @@ void ResourceItem::setTimeStamps(const QDateTime &t)
 
 QVariant ResourceItem::toVariant() const
 {
+    if (!m_lastSet.isValid())
+    {
+        return QVariant();
+    }
+
     if (m_rid.type == DataTypeString ||
         m_rid.type == DataTypeTimePattern)
     {
@@ -513,6 +550,24 @@ ResourceItem *Resource::addItem(ApiDataType type, const char *suffix)
     }
 
     return it;
+}
+
+void Resource::removeItem(const char *suffix)
+{
+    std::vector<ResourceItem>::iterator i = m_rItems.begin();
+    std::vector<ResourceItem>::iterator end = m_rItems.end();
+
+    for (; i != end; ++i)
+    {
+        if (i->descriptor().suffix != suffix)
+        {
+            continue;
+        }
+
+        *i = m_rItems.back();
+        m_rItems.pop_back();
+        return;
+    }
 }
 
 ResourceItem *Resource::item(const char *suffix)

@@ -30,18 +30,29 @@ void PollManager::poll(RestNodeBase *restNode, const QDateTime &tStart)
 {
     Resource *r = dynamic_cast<Resource*>(restNode);
     DBG_Assert(r != 0);
-    if (!r)
+    if (!r || !restNode->node())
     {
         return;
     }
 
     PollItem pitem;
 
+    if (!restNode->node()->nodeDescriptor().receiverOnWhenIdle())
+    {
+        return;
+    }
+
     if (r->prefix() == RLights)
     {
         LightNode *lightNode = static_cast<LightNode*>(restNode);
         DBG_Assert(lightNode != 0);
         pitem.endpoint = lightNode->haEndpoint().endpoint();
+    }
+    else if (r->prefix() == RSensors)
+    {
+        Sensor *sensor = static_cast<Sensor*>(restNode);
+        DBG_Assert(sensor != 0);
+        pitem.endpoint = sensor->fingerPrint().endpoint;
     }
     else
     {
@@ -61,6 +72,8 @@ void PollManager::poll(RestNodeBase *restNode, const QDateTime &tStart)
         if (suffix == RStateOn ||
             suffix == RStateBri ||
             suffix == RStateColorMode ||
+            suffix == RStateConsumption ||
+            suffix == RStatePower ||
             suffix == RAttrModelId)
         {
             pitem.items.push_back(suffix);
@@ -149,13 +162,19 @@ void PollManager::pollTimerFired()
     QDateTime now = QDateTime::currentDateTime();
     PollItem &pitem = items.front();
     Resource *r = plugin->getResource(pitem.prefix, pitem.id);
-    ResourceItem *item = r ? r->item(RStateReachable) : 0;
+    ResourceItem *item = 0;
     RestNodeBase *restNode = 0;
     const LightNode *lightNode = 0;
     if (r && r->prefix() == RLights)
     {
         restNode = plugin->getLightNodeForId(pitem.id);
         lightNode = static_cast<LightNode*>(restNode);
+        item = r->item(RStateReachable);
+    }
+    else if (r && r->prefix() == RSensors)
+    {
+        restNode = plugin->getSensorNodeForId(pitem.id);
+        item = r->item(RConfigReachable);
     }
 
     if (pitem.tStart.isValid() && pitem.tStart > now)
@@ -295,10 +314,28 @@ void PollManager::pollTimerFired()
             }
         }
     }
+    else if (suffix == RStateConsumption)
+    {
+        clusterId = METERING_CLUSTER_ID;
+        attributes.push_back(0x0000); // Curent Summation Delivered
+    }
+    else if (suffix == RStatePower)
+    {
+        clusterId = ELECTRICAL_MEASUREMENT_CLUSTER_ID;
+        attributes.push_back(0x050b); // Active Power
+        item = r->item(RAttrModelId);
+        if (! item->toString().startsWith(QLatin1String("Plug"))) // OSRAM plug
+        {
+            attributes.push_back(0x0505); // RMS Voltage
+            attributes.push_back(0x0508); // RMS Current
+        }
+    }
     else if (suffix == RAttrModelId)
     {
         item = r->item(RAttrModelId);
-        if (item && (item->toString().isEmpty() || item->toString() == QLatin1String("unknown")))
+        if (item && (item->toString().isEmpty() || item->toString() == QLatin1String("unknown") ||
+             (item->lastSet().secsTo(now) > READ_MODEL_ID_INTERVAL && item->toString().startsWith("FLS-A")) // dynamic model ids
+            ))
         {
             clusterId = BASIC_CLUSTER_ID;
             //attributes.push_back(0x0004); // manufacturer

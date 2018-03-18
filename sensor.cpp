@@ -232,13 +232,26 @@ static const Sensor::ButtonMap bjeSwitchMap[] = {
     { Sensor::ModeNone,             0x00, 0x0000, 0x00, 0,    0,                                           0 }
 };
 
+static const Sensor::ButtonMap xiaomiSwitchMap[] = {
+//    mode                          ep    cluster cmd   param button                                       name
+    // First button
+    { Sensor::ModeScenes,           0x01, 0x0006, 0x0a, 0,    S_BUTTON_1 + S_BUTTON_ACTION_INITIAL_PRESS, "Normal press" },
+    { Sensor::ModeScenes,           0x01, 0x0006, 0x0a, 1,    S_BUTTON_1 + S_BUTTON_ACTION_SHORT_RELEASED, "Normal release" },
+    { Sensor::ModeScenes,           0x01, 0x0006, 0x0a, 2,    S_BUTTON_1 + S_BUTTON_ACTION_DOUBLE_PRESS, "Double press" },
+    { Sensor::ModeScenes,           0x01, 0x0006, 0x0a, 3,    S_BUTTON_1 + S_BUTTON_ACTION_TREBLE_PRESS, "Triple press" },
+    { Sensor::ModeScenes,           0x01, 0x0006, 0x0a, 4,    S_BUTTON_1 + S_BUTTON_ACTION_QUADRUPLE_PRESS, "Quad press" },
+
+    // end
+    { Sensor::ModeNone,             0x00, 0x0000, 0x00, 0,    0,                                           0 }
+};
+
 static const Sensor::ButtonMap xiaomiSwitchAq2Map[] = {
 //    mode                          ep    cluster cmd   param button                                       name
     // First button
     { Sensor::ModeScenes,           0x01, 0x0006, 0x0a, 0,    S_BUTTON_1 + S_BUTTON_ACTION_SHORT_RELEASED, "Normal press" },
-    { Sensor::ModeScenes,           0x01, 0x0006, 0x0a, 2,    S_BUTTON_2 + S_BUTTON_ACTION_SHORT_RELEASED, "Double press" },
-    { Sensor::ModeScenes,           0x01, 0x0006, 0x0a, 3,    S_BUTTON_3 + S_BUTTON_ACTION_SHORT_RELEASED, "Triple press" },
-    { Sensor::ModeScenes,           0x01, 0x0006, 0x0a, 4,    S_BUTTON_4 + S_BUTTON_ACTION_SHORT_RELEASED, "Quad press" },
+    { Sensor::ModeScenes,           0x01, 0x0006, 0x0a, 2,    S_BUTTON_1 + S_BUTTON_ACTION_DOUBLE_PRESS, "Double press" },
+    { Sensor::ModeScenes,           0x01, 0x0006, 0x0a, 3,    S_BUTTON_1 + S_BUTTON_ACTION_TREBLE_PRESS, "Triple press" },
+    { Sensor::ModeScenes,           0x01, 0x0006, 0x0a, 4,    S_BUTTON_1 + S_BUTTON_ACTION_QUADRUPLE_PRESS, "Quad press" },
 
     // end
     { Sensor::ModeNone,             0x00, 0x0000, 0x00, 0,    0,                                           0 }
@@ -258,6 +271,54 @@ static const Sensor::ButtonMap ubisysD1Map[] = {
     { Sensor::ModeScenes,           0x03, 0x0008, 0x07, 0,    S_BUTTON_2 + S_BUTTON_ACTION_LONG_RELEASED, "Stop_ (with on/off)" },
     { Sensor::ModeScenes,           0x03, 0x0008, 0x05, 1,    S_BUTTON_2 + S_BUTTON_ACTION_HOLD, "Move down (with on/off)" },
     { Sensor::ModeScenes,           0x03, 0x0008, 0x07, 1,    S_BUTTON_2 + S_BUTTON_ACTION_LONG_RELEASED, "Stop_ (with on/off)" },
+    // end
+    { Sensor::ModeNone,             0x00, 0x0000, 0x00, 0,    0,                                           0 }
+};
+
+static const Sensor::ButtonMap ubisysC4Map[] = {
+//    mode                          ep    cluster cmd   param button                                       name
+    // First button
+    { Sensor::ModeScenes,           0x01, 0x0006, 0x02, 0,    S_BUTTON_1 + S_BUTTON_ACTION_SHORT_RELEASED, "Toggle" },
+    { Sensor::ModeScenes,           0x01, 0x0008, 0x05, 0,    S_BUTTON_1 + S_BUTTON_ACTION_HOLD, "Move up (with on/off)" },
+    { Sensor::ModeScenes,           0x01, 0x0008, 0x07, 0,    S_BUTTON_1 + S_BUTTON_ACTION_LONG_RELEASED, "Stop_ (with on/off)" },
+    { Sensor::ModeScenes,           0x01, 0x0008, 0x05, 1,    S_BUTTON_1 + S_BUTTON_ACTION_HOLD, "Move down (with on/off)" },
+    { Sensor::ModeScenes,           0x01, 0x0008, 0x07, 1,    S_BUTTON_1 + S_BUTTON_ACTION_LONG_RELEASED, "Stop_ (with on/off)" },
+    // Second button
+    { Sensor::ModeScenes,           0x02, 0x0006, 0x02, 0,    S_BUTTON_2 + S_BUTTON_ACTION_SHORT_RELEASED, "Toggle" },
+    { Sensor::ModeScenes,           0x02, 0x0008, 0x05, 0,    S_BUTTON_2 + S_BUTTON_ACTION_HOLD, "Move up (with on/off)" },
+    { Sensor::ModeScenes,           0x02, 0x0008, 0x07, 0,    S_BUTTON_2 + S_BUTTON_ACTION_LONG_RELEASED, "Stop_ (with on/off)" },
+    { Sensor::ModeScenes,           0x02, 0x0008, 0x05, 1,    S_BUTTON_2 + S_BUTTON_ACTION_HOLD, "Move down (with on/off)" },
+    { Sensor::ModeScenes,           0x02, 0x0008, 0x07, 1,    S_BUTTON_2 + S_BUTTON_ACTION_LONG_RELEASED, "Stop_ (with on/off)" },
+    // Third button
+    { Sensor::ModeScenes,           0x03, 0x0006, 0x02, 0,    S_BUTTON_3 + S_BUTTON_ACTION_SHORT_RELEASED, "Toggle" },
+    { Sensor::ModeScenes,           0x03, 0x0008, 0x05, 0,    S_BUTTON_3 + S_BUTTON_ACTION_HOLD, "Move up (with on/off)" },
+    { Sensor::ModeScenes,           0x03, 0x0008, 0x07, 0,    S_BUTTON_3 + S_BUTTON_ACTION_LONG_RELEASED, "Stop_ (with on/off)" },
+    { Sensor::ModeScenes,           0x03, 0x0008, 0x05, 1,    S_BUTTON_3 + S_BUTTON_ACTION_HOLD, "Move down (with on/off)" },
+    { Sensor::ModeScenes,           0x03, 0x0008, 0x07, 1,    S_BUTTON_3 + S_BUTTON_ACTION_LONG_RELEASED, "Stop_ (with on/off)" },
+    // Fourth button
+    { Sensor::ModeScenes,           0x04, 0x0006, 0x02, 0,    S_BUTTON_4 + S_BUTTON_ACTION_SHORT_RELEASED, "Toggle" },
+    { Sensor::ModeScenes,           0x04, 0x0008, 0x05, 0,    S_BUTTON_4 + S_BUTTON_ACTION_HOLD, "Move up (with on/off)" },
+    { Sensor::ModeScenes,           0x04, 0x0008, 0x07, 0,    S_BUTTON_4 + S_BUTTON_ACTION_LONG_RELEASED, "Stop_ (with on/off)" },
+    { Sensor::ModeScenes,           0x04, 0x0008, 0x05, 1,    S_BUTTON_4 + S_BUTTON_ACTION_HOLD, "Move down (with on/off)" },
+    { Sensor::ModeScenes,           0x04, 0x0008, 0x07, 1,    S_BUTTON_4 + S_BUTTON_ACTION_LONG_RELEASED, "Stop_ (with on/off)" },
+    // end
+    { Sensor::ModeNone,             0x00, 0x0000, 0x00, 0,    0,                                           0 }
+};
+
+static const Sensor::ButtonMap lutronLZL4BWHLSwitchMap[] = {
+//    mode                          ep    cluster cmd   param button                                       name
+//  vendor specific
+    // top button
+    { Sensor::ModeDimmer,           0x01, 0x0008, 0x04, 0xfe,  S_BUTTON_1 + S_BUTTON_ACTION_SHORT_RELEASED, "on" },
+    // second button
+    { Sensor::ModeDimmer,           0x01, 0x0008, 0x06, 0x00,  S_BUTTON_2 + S_BUTTON_ACTION_HOLD,           "dimm up" },
+    { Sensor::ModeDimmer,           0x01, 0x0008, 0x03, 0x00,  S_BUTTON_2 + S_BUTTON_ACTION_LONG_RELEASED,  "dimm up release" },
+    // third button
+    { Sensor::ModeDimmer,           0x01, 0x0008, 0x02, 0x01,  S_BUTTON_3 + S_BUTTON_ACTION_HOLD,           "dimm down" },
+    { Sensor::ModeDimmer,           0x01, 0x0008, 0x03, 0x01,  S_BUTTON_3 + S_BUTTON_ACTION_LONG_RELEASED,  "dimm down release" },
+    // bottom button
+    { Sensor::ModeDimmer,           0x01, 0x0008, 0x04, 0x00,  S_BUTTON_4 + S_BUTTON_ACTION_SHORT_RELEASED,  "off" },
+
     // end
     { Sensor::ModeNone,             0x00, 0x0000, 0x00, 0,    0,                                           0 }
 };
@@ -440,7 +501,12 @@ void Sensor::setDeletedState(DeletedState deletedstate)
  */
 bool Sensor::isAvailable() const
 {
-    return item(RConfigReachable)->toBool();
+    const ResourceItem *i = item(RConfigReachable);
+    if (i)
+    {
+        return i->toBool();
+    }
+    return true;
 }
 
 /*! Returns the sensor name.
@@ -757,11 +823,17 @@ const Sensor::ButtonMap *Sensor::buttonMap()
         }
         else if (m_manufacturer == QLatin1String("ubisys"))
         {
-            m_buttonMap = ubisysD1Map;
+            if      (modelid.startsWith(QLatin1String("D1"))) { m_buttonMap = ubisysD1Map; }
+            else if (modelid.startsWith(QLatin1String("C4"))) { m_buttonMap = ubisysC4Map; }
         }
         else if (m_manufacturer == QLatin1String("LUMI"))
         {
-            if      (modelid.startsWith(QLatin1String("lumi.sensor_switch")))  { m_buttonMap = xiaomiSwitchAq2Map; }
+            if      (modelid == QLatin1String("lumi.sensor_switch"))      { m_buttonMap = xiaomiSwitchMap; }
+            else if (modelid == QLatin1String("lumi.sensor_switch.aq2"))  { m_buttonMap = xiaomiSwitchAq2Map; }
+        }
+        else if (m_manufacturer == QLatin1String("Lutron"))
+        {
+            if      (modelid.startsWith(QLatin1String("LZL4BWHL")))      { m_buttonMap = lutronLZL4BWHLSwitchMap; }
         }
     }
 

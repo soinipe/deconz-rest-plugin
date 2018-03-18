@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 dresden elektronik ingenieurtechnik gmbh.
+ * Copyright (c) 2016-2018 dresden elektronik ingenieurtechnik gmbh.
  * All rights reserved.
  *
  * The software in this package is published under the terms of the BSD
@@ -303,6 +303,8 @@ static int sqliteLoadConfigCallback(void *user, int ncols, char **colval , char 
         return 0;
     }
 
+    DBG_Printf(DBG_INFO_L2, "Load config from db.\n");
+
     bool ok;
     DeRestPluginPrivate *d = static_cast<DeRestPluginPrivate*>(user);
 
@@ -510,12 +512,28 @@ static int sqliteLoadConfigCallback(void *user, int ncols, char **colval , char 
             d->gwWifiName = val;
         }
     }
+    else if (strcmp(colval[0], "wificlientname") == 0)
+    {
+        if (!val.isEmpty())
+        {
+            d->gwConfig["wificlientname"] = val;
+            d->gwWifiClientName = val;
+        }
+    }
     else if (strcmp(colval[0], "wifiappw") == 0)
     {
         if (!val.isEmpty())
         {
             //d->gwConfig["wifiappw"] = val;
             d->gwWifiPw = val;
+        }
+    }
+    else if (strcmp(colval[0], "wificlientpw") == 0)
+    {
+        if (!val.isEmpty())
+        {
+            //d->gwConfig["wificlientpw"] = val;
+            d->gwWifiClientPw = val;
         }
     }
     else if (strcmp(colval[0], "wifitype") == 0)
@@ -690,6 +708,102 @@ void DeRestPluginPrivate::loadSwUpdateStateFromDb()
 
     {
         QString sql = QLatin1String("SELECT * FROM config2 WHERE key='swupdatestate'");
+
+        DBG_Printf(DBG_INFO_L2, "sql exec %s\n", qPrintable(sql));
+        rc = sqlite3_exec(db, qPrintable(sql), sqliteLoadConfigCallback, this, &errmsg);
+
+        if (rc != SQLITE_OK)
+        {
+            if (errmsg)
+            {
+                DBG_Printf(DBG_ERROR, "sqlite3_exec %s, error: %s\n", qPrintable(sql), errmsg);
+                sqlite3_free(errmsg);
+            }
+        }
+    }
+}
+
+/*! Loads wifi information from database
+ */
+void DeRestPluginPrivate::loadWifiInformationFromDb()
+{
+    int rc;
+    char *errmsg = 0;
+
+    DBG_Assert(db != 0);
+
+    if (!db)
+    {
+        return;
+    }
+
+    {
+        QString sql = QLatin1String("SELECT * FROM config2 WHERE key='availablewifi'");
+
+        DBG_Printf(DBG_INFO_L2, "sql exec %s\n", qPrintable(sql));
+        rc = sqlite3_exec(db, qPrintable(sql), sqliteLoadConfigCallback, this, &errmsg);
+
+        if (rc != SQLITE_OK)
+        {
+            if (errmsg)
+            {
+                DBG_Printf(DBG_ERROR, "sqlite3_exec %s, error: %s\n", qPrintable(sql), errmsg);
+                sqlite3_free(errmsg);
+            }
+        }
+        sql = QLatin1String("SELECT * FROM config2 WHERE key='wifiip'");
+
+        DBG_Printf(DBG_INFO_L2, "sql exec %s\n", qPrintable(sql));
+        rc = sqlite3_exec(db, qPrintable(sql), sqliteLoadConfigCallback, this, &errmsg);
+
+        if (rc != SQLITE_OK)
+        {
+            if (errmsg)
+            {
+                DBG_Printf(DBG_ERROR, "sqlite3_exec %s, error: %s\n", qPrintable(sql), errmsg);
+                sqlite3_free(errmsg);
+            }
+        }
+        sql = QLatin1String("SELECT * FROM config2 WHERE key='wifitype'");
+
+        DBG_Printf(DBG_INFO_L2, "sql exec %s\n", qPrintable(sql));
+        rc = sqlite3_exec(db, qPrintable(sql), sqliteLoadConfigCallback, this, &errmsg);
+
+        if (rc != SQLITE_OK)
+        {
+            if (errmsg)
+            {
+                DBG_Printf(DBG_ERROR, "sqlite3_exec %s, error: %s\n", qPrintable(sql), errmsg);
+                sqlite3_free(errmsg);
+            }
+        }
+        sql = QLatin1String("SELECT * FROM config2 WHERE key='wifi'");
+
+        DBG_Printf(DBG_INFO_L2, "sql exec %s\n", qPrintable(sql));
+        rc = sqlite3_exec(db, qPrintable(sql), sqliteLoadConfigCallback, this, &errmsg);
+
+        if (rc != SQLITE_OK)
+        {
+            if (errmsg)
+            {
+                DBG_Printf(DBG_ERROR, "sqlite3_exec %s, error: %s\n", qPrintable(sql), errmsg);
+                sqlite3_free(errmsg);
+            }
+        }
+        sql = QLatin1String("SELECT * FROM config2 WHERE key='wifiname'");
+
+        DBG_Printf(DBG_INFO_L2, "sql exec %s\n", qPrintable(sql));
+        rc = sqlite3_exec(db, qPrintable(sql), sqliteLoadConfigCallback, this, &errmsg);
+
+        if (rc != SQLITE_OK)
+        {
+            if (errmsg)
+            {
+                DBG_Printf(DBG_ERROR, "sqlite3_exec %s, error: %s\n", qPrintable(sql), errmsg);
+                sqlite3_free(errmsg);
+            }
+        }
+        sql = QLatin1String("SELECT * FROM config2 WHERE key='wificlientname'");
 
         DBG_Printf(DBG_INFO_L2, "sql exec %s\n", qPrintable(sql));
         rc = sqlite3_exec(db, qPrintable(sql), sqliteLoadConfigCallback, this, &errmsg);
@@ -1751,6 +1865,11 @@ static int sqliteLoadAllSensorsCallback(void *user, int ncols, char **colval , c
         quint8 endpoint = sensor.fingerPrint().endpoint;
         DBG_Printf(DBG_INFO_L2, "DB found sensor %s %s\n", qPrintable(sensor.name()), qPrintable(sensor.id()));
 
+        if (!isClip && sensor.type() == QLatin1String("Daylight"))
+        {
+            isClip = true;
+        }
+
         if (isClip)
         {
             ok = true;
@@ -1834,6 +1953,8 @@ static int sqliteLoadAllSensorsCallback(void *user, int ncols, char **colval , c
             }
             item = sensor.addItem(DataTypeInt16, RStateTemperature);
             item->setValue(0);
+            item = sensor.addItem(DataTypeInt16, RConfigOffset);
+            item->setValue(0);
         }
         else if (sensor.type().endsWith(QLatin1String("Humidity")))
         {
@@ -1858,6 +1979,21 @@ static int sqliteLoadAllSensorsCallback(void *user, int ncols, char **colval , c
             if (sensor.fingerPrint().hasInCluster(OCCUPANCY_SENSING_CLUSTER_ID))
             {
                 clusterId = OCCUPANCY_SENSING_CLUSTER_ID;
+                if (sensor.modelId().startsWith(QLatin1String("FLS")) ||
+                    sensor.modelId().startsWith(QLatin1String("SML001")))
+                {
+                    // TODO write and recover min/max to db
+                    deCONZ::NumericUnion dummy;
+                    dummy.u64 = 0;
+                    sensor.setZclValue(NodeValue::UpdateInvalid, clusterId, 0x0000, dummy);
+                    NodeValue &val = sensor.getZclValue(clusterId, 0x0000);
+                    val.minInterval = 1;     // value used by Hue bridge
+                    val.maxInterval = 300;   // value used by Hue bridge
+
+                    sensor.setNextReadTime(READ_OCCUPANCY_CONFIG, QTime::currentTime());
+                    sensor.enableRead(READ_OCCUPANCY_CONFIG);
+                    sensor.setLastRead(READ_OCCUPANCY_CONFIG, 0);
+                }
             }
             else if (sensor.fingerPrint().hasInCluster(IAS_ZONE_CLUSTER_ID))
             {
@@ -1869,15 +2005,19 @@ static int sqliteLoadAllSensorsCallback(void *user, int ncols, char **colval , c
             }
             item = sensor.addItem(DataTypeBool, RStatePresence);
             item->setValue(false);
-            item = sensor.addItem(DataTypeUInt16, RConfigDuration);
-            item->setValue(0);
             if (sensor.modelId() == QLatin1String("SML001")) // Hue motion sensor
             {
+                item = sensor.addItem(DataTypeUInt16, RConfigDelay);
                 item->setValue(0);
                 item = sensor.addItem(DataTypeUInt8, RConfigSensitivity);
                 item->setValue(0);
                 item = sensor.addItem(DataTypeUInt8, RConfigSensitivityMax);
                 item->setValue(R_SENSITIVITY_MAX_DEFAULT);
+            }
+            else
+            {
+                item = sensor.addItem(DataTypeUInt16, RConfigDuration);
+                item->setValue(60); // presence should be reasonable for physical sensors
             }
         }
         else if (sensor.type().endsWith(QLatin1String("Flag")))
@@ -1902,6 +2042,97 @@ static int sqliteLoadAllSensorsCallback(void *user, int ncols, char **colval , c
             }
             item = sensor.addItem(DataTypeBool, RStateOpen);
             item->setValue(false);
+        }
+        else if (sensor.type().endsWith(QLatin1String("Alarm")))
+        {
+            if (sensor.fingerPrint().hasInCluster(IAS_ZONE_CLUSTER_ID))
+            {
+                clusterId = IAS_ZONE_CLUSTER_ID;
+            }
+            item = sensor.addItem(DataTypeBool, RStateAlarm);
+            item->setValue(false);
+        }
+        else if (sensor.type().endsWith(QLatin1String("CarbonMonoxide")))
+        {
+            if (sensor.fingerPrint().hasInCluster(IAS_ZONE_CLUSTER_ID))
+            {
+                clusterId = IAS_ZONE_CLUSTER_ID;
+            }
+            item = sensor.addItem(DataTypeBool, RStateCarbonMonoxide);
+            item->setValue(false);
+        }
+        else if (sensor.type().endsWith(QLatin1String("Fire")))
+        {
+            if (sensor.fingerPrint().hasInCluster(IAS_ZONE_CLUSTER_ID))
+            {
+                clusterId = IAS_ZONE_CLUSTER_ID;
+            }
+            item = sensor.addItem(DataTypeBool, RStateFire);
+            item->setValue(false);
+        }
+        else if (sensor.type().endsWith(QLatin1String("Water")))
+        {
+            if (sensor.fingerPrint().hasInCluster(IAS_ZONE_CLUSTER_ID))
+            {
+                clusterId = IAS_ZONE_CLUSTER_ID;
+            }
+            item = sensor.addItem(DataTypeBool, RStateWater);
+            item->setValue(false);
+        }
+        else if (sensor.type().endsWith(QLatin1String("Consumption")))
+        {
+            if (sensor.fingerPrint().hasInCluster(METERING_CLUSTER_ID))
+            {
+                clusterId = METERING_CLUSTER_ID;
+                item = sensor.addItem(DataTypeInt16, RStatePower);
+                item->setValue(0);
+            }
+            else if (sensor.fingerPrint().hasInCluster(ANALOG_INPUT_CLUSTER_ID))
+            {
+                clusterId = ANALOG_INPUT_CLUSTER_ID;
+            }
+            item = sensor.addItem(DataTypeInt64, RStateConsumption);
+            item->setValue(0);
+        }
+        else if (sensor.type().endsWith(QLatin1String("Power")))
+        {
+            bool hasVoltage = true;
+            if (sensor.fingerPrint().hasInCluster(ELECTRICAL_MEASUREMENT_CLUSTER_ID))
+            {
+                clusterId = ELECTRICAL_MEASUREMENT_CLUSTER_ID;
+                if (sensor.modelId().startsWith(QLatin1String("Plug"))) // OSRAM
+                {
+                    hasVoltage = false;
+                }
+            }
+            else if (sensor.fingerPrint().hasInCluster(ANALOG_INPUT_CLUSTER_ID))
+            {
+                clusterId = ANALOG_INPUT_CLUSTER_ID;
+                hasVoltage = false;
+            }
+            item = sensor.addItem(DataTypeInt16, RStatePower);
+            item->setValue(0);
+            if (hasVoltage)
+            {
+                item = sensor.addItem(DataTypeUInt16, RStateVoltage);
+                item->setValue(0);
+                item = sensor.addItem(DataTypeUInt16, RStateCurrent);
+                item->setValue(0);
+            }
+        }
+        else if (sensor.type() == QLatin1String("Daylight"))
+        {
+            d->daylightSensorId = sensor.id();
+            sensor.removeItem(RConfigReachable);
+            sensor.addItem(DataTypeBool, RConfigConfigured);
+            item = sensor.addItem(DataTypeInt8, RConfigSunriseOffset);
+            item->setValue(30);
+            item =sensor.addItem(DataTypeInt8, RConfigSunsetOffset);
+            item->setValue(-30);
+            sensor.addItem(DataTypeString, RConfigLat);
+            sensor.addItem(DataTypeString, RConfigLong);
+            sensor.addItem(DataTypeBool, RStateDaylight);
+            sensor.addItem(DataTypeInt32, RStateStatus);
         }
 
         if (sensor.modelId().startsWith(QLatin1String("RWL02"))) // Hue dimmer switch
@@ -1941,7 +2172,8 @@ static int sqliteLoadAllSensorsCallback(void *user, int ncols, char **colval , c
             item->setValue(0);
             item = sensor.addItem(DataTypeBool, RConfigUsertest);
             item->setValue(false);
-        } else if (sensor.modelId().startsWith(QLatin1String("TRADFRI")))
+        }
+        else if (sensor.modelId().startsWith(QLatin1String("TRADFRI")))
         {
             // support power configuration cluster for IKEA devices
             if (!sensor.fingerPrint().hasInCluster(POWER_CONFIGURATION_CLUSTER_ID))
@@ -1952,6 +2184,29 @@ static int sqliteLoadAllSensorsCallback(void *user, int ncols, char **colval , c
             item = sensor.addItem(DataTypeString, RConfigAlert);
             item->setValue(R_ALERT_DEFAULT);
         }
+        else if (sensor.modelId().startsWith(QLatin1String("lumi.")))
+        {
+            item = sensor.addItem(DataTypeUInt8, RConfigBattery);
+            item->setValue(100);
+
+            if (!sensor.item(RStateTemperature) &&
+                !sensor.modelId().contains(QLatin1String("weather")) &&
+                !sensor.modelId().startsWith(QLatin1String("lumi.sensor_ht")))
+            {
+                item = sensor.addItem(DataTypeInt16, RConfigTemperature);
+                item->setValue(0);
+                //item = sensor.addItem(DataTypeInt16, RConfigOffset);
+                //item->setValue(0);
+            }
+        }
+
+        if (sensor.fingerPrint().hasInCluster(IAS_ZONE_CLUSTER_ID))
+        {
+            item = sensor.addItem(DataTypeBool, RStateLowBattery);
+            item->setValue(false);
+            item = sensor.addItem(DataTypeBool, RStateTampered);
+            item->setValue(false);
+        }
 
         if (sensor.fingerPrint().hasInCluster(POWER_CONFIGURATION_CLUSTER_ID))
         {
@@ -1959,7 +2214,9 @@ static int sqliteLoadAllSensorsCallback(void *user, int ncols, char **colval , c
             item->setValue(100);
         }
 
-        if (stateCol >= 0 && !isClip)
+        if (stateCol >= 0 &&
+            sensor.type() != QLatin1String("CLIPGenericFlag") &&
+            sensor.type() != QLatin1String("CLIPGenericStatus"))
         {
             sensor.jsonToState(QLatin1String(colval[stateCol]));
         }
@@ -1967,14 +2224,6 @@ static int sqliteLoadAllSensorsCallback(void *user, int ncols, char **colval , c
         if (configCol >= 0)
         {
             sensor.jsonToConfig(QLatin1String(colval[configCol]));
-        }
-
-        // provide default if values are not set or invalid
-        // presence should be reasonable for physical sensors
-        item = sensor.item(RConfigDuration);
-        if (!isClip && item && item->toNumber() <= 0)
-        {
-            item->setValue(60);
         }
 
         if (extAddr != 0)
@@ -2488,8 +2737,10 @@ void DeRestPluginPrivate::saveDb()
         gwConfig["wifi"] = gwWifi;
         gwConfig["wifitype"] = gwWifiType;
         gwConfig["wifiname"] = gwWifiName;
+        gwConfig["wificlientname"] = gwWifiClientName;
         gwConfig["wifichannel"] = gwWifiChannel;
         gwConfig["wifiappw"] = gwWifiPw;
+        gwConfig["wificlientpw"] = gwWifiClientPw;
         gwConfig["wifiip"] = gwWifiIp;
         gwConfig["bridgeid"] = gwBridgeId;
         gwConfig["websocketnotifyall"] = gwWebSocketNotifyAll;
@@ -3207,10 +3458,15 @@ void DeRestPluginPrivate::queSaveDb(int items, int msec)
     databaseTimer->start(msec);
 }
 
-/*! Timer handler for storing persistent data.
+/*! Checks various data for consistency.
  */
 void DeRestPluginPrivate::checkConsistency()
 {
+    if (gwProxyAddress == QLatin1String("none"))
+    {
+        gwProxyPort = 0;
+    }
+
     {
         std::vector<Group>::iterator i = groups.begin();
         std::vector<Group>::iterator end = groups.end();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 dresden elektronik ingenieurtechnik gmbh.
+ * Copyright (c) 2017-2018 dresden elektronik ingenieurtechnik gmbh.
  * All rights reserved.
  *
  * The software in this package is published under the terms of the BSD
@@ -104,6 +104,7 @@
 
 //
 #define DEV_ID_IAS_ZONE                     0x0402 // IAS Zone
+#define DEV_ID_IAS_WARNING_DEVICE           0x0403 // IAS Warning Device
 // Smart Energy devices
 #define DEV_ID_SE_METERING_DEVICE           0x0501 // Smart Energy metering device
 
@@ -128,34 +129,40 @@
 #define DEV_ID_ZLL_CONTROL_BRIDGE           0x0840 // Control bridge
 #define DEV_ID_ZLL_ONOFF_SENSOR             0x0850 // On/Off sensor
 
+#define DEV_ID_XIAOMI_SMART_PLUG            0xffff
+
 #define DEFAULT_TRANSITION_TIME 4 // 400ms
 #define MAX_ENHANCED_HUE 65535
 #define MAX_ENHANCED_HUE_Z 65278 // max supportet ehue of all devices
 
-#define BASIC_CLUSTER_ID 0x0000
-#define POWER_CONFIGURATION_CLUSTER_ID 0x0001
-#define IDENTIFY_CLUSTER_ID 0x0003
-#define GROUP_CLUSTER_ID 0x0004
-#define SCENE_CLUSTER_ID 0x0005
-#define ONOFF_CLUSTER_ID 0x0006
+#define BASIC_CLUSTER_ID                      0x0000
+#define POWER_CONFIGURATION_CLUSTER_ID        0x0001
+#define IDENTIFY_CLUSTER_ID                   0x0003
+#define GROUP_CLUSTER_ID                      0x0004
+#define SCENE_CLUSTER_ID                      0x0005
+#define ONOFF_CLUSTER_ID                      0x0006
 #define ONOFF_SWITCH_CONFIGURATION_CLUSTER_ID 0x0007
-#define LEVEL_CLUSTER_ID 0x0008
-#define ANALOG_INPUT_CLUSTER_ID 0x000C
-#define MULTISTATE_INPUT_CLUSTER_ID 0x0012
-#define COLOR_CLUSTER_ID 0x0300
-#define ILLUMINANCE_MEASUREMENT_CLUSTER_ID   0x0400
-#define ILLUMINANCE_LEVEL_SENSING_CLUSTER_ID 0x0401
-#define TEMPERATURE_MEASUREMENT_CLUSTER_ID   0x0402
-#define PRESSURE_MEASUREMENT_CLUSTER_ID      0x0403
-#define RELATIVE_HUMIDITY_CLUSTER_ID         0x0405
-#define OCCUPANCY_SENSING_CLUSTER_ID         0x0406
-#define IAS_ZONE_CLUSTER_ID 0x0500
-#define OTAU_CLUSTER_ID  0x0019
-#define DE_CLUSTER_ID    0xFC00
-#define VENDOR_CLUSTER_ID 0xFC00
-#define GREEN_POWER_CLUSTER_ID 0x0021
+#define LEVEL_CLUSTER_ID                      0x0008
+#define ANALOG_INPUT_CLUSTER_ID               0x000C
+#define MULTISTATE_INPUT_CLUSTER_ID           0x0012
+#define OTAU_CLUSTER_ID                       0x0019
+#define GREEN_POWER_CLUSTER_ID                0x0021
+#define COLOR_CLUSTER_ID                      0x0300
+#define ILLUMINANCE_MEASUREMENT_CLUSTER_ID    0x0400
+#define ILLUMINANCE_LEVEL_SENSING_CLUSTER_ID  0x0401
+#define TEMPERATURE_MEASUREMENT_CLUSTER_ID    0x0402
+#define PRESSURE_MEASUREMENT_CLUSTER_ID       0x0403
+#define RELATIVE_HUMIDITY_CLUSTER_ID          0x0405
+#define OCCUPANCY_SENSING_CLUSTER_ID          0x0406
+#define IAS_ZONE_CLUSTER_ID                   0x0500
+#define IAS_WD_CLUSTER_ID                     0x0502
+#define METERING_CLUSTER_ID                   0x0702
+#define ELECTRICAL_MEASUREMENT_CLUSTER_ID     0x0B04
+#define COMMISSIONING_CLUSTER_ID              0x1000
+#define DE_CLUSTER_ID                         0xFC00
+#define VENDOR_CLUSTER_ID                     0xFC00
+
 #define GREEN_POWER_ENDPOINT 0xf2
-#define COMMISSIONING_CLUSTER_ID  0x1000
 
 #define ONOFF_COMMAND_OFF     0x00
 #define ONOFF_COMMAND_ON      0x01
@@ -174,6 +181,15 @@
 #define SCENE_COMMAND_IKEA_STEP_CT 0x07
 #define SCENE_COMMAND_IKEA_MOVE_CT 0x08
 #define SCENE_COMMAND_IKEA_STOP_CT 0x09
+
+// IAS Zone Types
+#define IAS_ZONE_TYPE_STANDARD_CIE            0x0000
+#define IAS_ZONE_TYPE_MOTION_SENSOR           0x000d
+#define IAS_ZONE_TYPE_CONTACT_SWITCH          0x0015
+#define IAS_ZONE_TYPE_FIRE_SENSOR             0x0028
+#define IAS_ZONE_TYPE_WATER_SENSOR            0x002a
+#define IAS_ZONE_TYPE_CARBON_MONOXIDE_SENSOR  0x002b
+#define IAS_ZONE_TYPE_WARNING_DEVICE          0x0225
 
 // read flags
 #define READ_MODEL_ID          (1 << 0)
@@ -194,29 +210,34 @@
 
 // write flags
 #define WRITE_OCCUPANCY_CONFIG  (1 << 11)
-#define WRITE_DURATION          (1 << 13)
+#define WRITE_DELAY             (1 << 13)
 #define WRITE_LEDINDICATION     (1 << 14)
 #define WRITE_SENSITIVITY       (1 << 15)
 #define WRITE_USERTEST          (1 << 16)
 
 // manufacturer codes
-#define VENDOR_ATMEL    0x1014
-#define VENDOR_JENNIC   0x1037
-#define VENDOR_DDEL     0x1135
-#define VENDOR_INNR     0x1166
-#define VENDOR_INNR2    0x1168
-#define VENDOR_INSTA    0x117a
-#define VENDOR_IKEA     0x117c
-#define VENDOR_NYCE     0x10b9
-#define VENDOR_PHILIPS  0x100B
-#define VENDOR_OSRAM_STACK  0xBBAA
-#define VENDOR_OSRAM    0x110C
-#define VENDOR_CENTRALITE   0x104e
-#define VENDOR_UBISYS   0x10F2
+// http://cgit.osmocom.org/wireshark/plain/epan/dissectors/packet-zbee.h
+#define VENDOR_NONE         0x0000
+#define VENDOR_EMBER        0x1002
+#define VENDOR_PHILIPS      0x100B
+#define VENDOR_ATMEL        0x1014
+#define VENDOR_JENNIC       0x1037
+#define VENDOR_CENTRALITE   0x104E
+#define VENDOR_NYCE         0x10B9
+#define VENDOR_UBISYS       0x10F2
+#define VENDOR_BEGA         0x1105
+#define VENDOR_OSRAM        0x110C
+#define VENDOR_DDEL         0x1135
+#define VENDOR_LUTRON       0x1144
+#define VENDOR_115F         0x115F    // Used by Xiaomi
+#define VENDOR_INNR         0x1166
+#define VENDOR_INNR2        0x1168
+#define VENDOR_INSTA        0x117A
+#define VENDOR_IKEA         0x117C
 #define VENDOR_BUSCH_JAEGER 0x112E
-#define VENDOR_BEGA 0x1105
-#define VENDOR_PAULMANN 0x119d
-#define VENDOR_NONE   0x0000
+#define VENDOR_PAULMANN     0x119D
+#define VENDOR_120B         0x120B     // Used by Heiman
+#define VENDOR_OSRAM_STACK  0xBBAA
 
 #define ANNOUNCE_INTERVAL 10 // minutes default announce interval
 
@@ -285,7 +306,7 @@
 
 extern const quint64 macPrefixMask;
 extern const quint64 bjeMacPrefix;
-extern const quint64 centraLiteMacPrefix;
+extern const quint64 emberMacPrefix;
 extern const quint64 tiMacPrefix;
 extern const quint64 deMacPrefix;
 extern const quint64 ikeaMacPrefix;
@@ -293,7 +314,10 @@ extern const quint64 instaMacPrefix;
 extern const quint64 jennicMacPrefix;
 extern const quint64 philipsMacPrefix;
 extern const quint64 osramMacPrefix;
-extern const quint64 nyceMacPrefix;
+extern const quint64 ubisysMacPrefix;
+extern const quint64 netvoxMacPrefix;
+extern const quint64 heimanMacPrefix;
+extern const quint64 lutronMacPrefix;
 
 // HTTP status codes
 extern const char *HttpStatusOk;
@@ -443,7 +467,8 @@ enum TaskType
     TaskAddToGroup = 30,
     TaskRemoveFromGroup = 31,
     TaskViewGroup = 32,
-    TaskTriggerEffect = 33
+    TaskTriggerEffect = 33,
+    TaskWarning = 34
 };
 
 struct TaskItem
@@ -478,6 +503,8 @@ struct TaskItem
     qreal hueReal;
     uint16_t identifyTime;
     uint8_t effectIdentifier;
+    uint8_t options;
+    uint16_t duration;
     uint8_t hue;
     uint8_t sat;
     uint8_t level;
@@ -640,7 +667,10 @@ public:
     int changePassword(const ApiRequest &req, ApiResponse &rsp);
     int deletePassword(const ApiRequest &req, ApiResponse &rsp);
     int getWifiState(const ApiRequest &req, ApiResponse &rsp);
+    int configureWifi(const ApiRequest &req, ApiResponse &rsp);
     int restoreWifiConfig(const ApiRequest &req, ApiResponse &rsp);
+    int putWifiScanResult(const ApiRequest &req, ApiResponse &rsp);
+    int putWifiUpdated(const ApiRequest &req, ApiResponse &rsp);
 
     void configToMap(const ApiRequest &req, QVariantMap &map);
     void basicConfigToMap(QVariantMap &map);
@@ -807,6 +837,7 @@ public Q_SLOTS:
     void internetDiscoveryTimerFired();
     void internetDiscoveryFinishedRequest(QNetworkReply *reply);
     void internetDiscoveryExtractVersionInfo(QNetworkReply *reply);
+    void internetDiscoveryExtractGeo(QNetworkReply *reply);
     void inetProxyHostLookupDone(const QHostInfo &host);
     void inetProxyCheckHttpVia(const QString &via);
     void scheduleTimerFired();
@@ -833,10 +864,12 @@ public Q_SLOTS:
     void verifyRuleBindingsTimerFired();
     void indexRulesTriggers();
     void fastRuleCheckTimerFired();
+    void daylightTimerFired();
     void handleRuleEvent(const Event &e);
     void queueBindingTask(const BindingTask &bindingTask);
     void restartAppTimerFired();
     void pollSwUpdateStateTimerFired();
+    void pollDatabaseWifiTimerFired();
     void restartGatewayTimerFired();
     void shutDownGatewayTimerFired();
     void simpleRestartAppTimerFired();
@@ -904,7 +937,6 @@ public Q_SLOTS:
     bool startUpdateFirmware();
 
     //wifi settings
-    void checkWifiState();
     int scanWifiNetworks(const ApiRequest &req, ApiResponse &rsp);
 
     // time manager
@@ -929,12 +961,13 @@ public:
     LightNode *getLightNodeForId(const QString &id);
     Rule *getRuleForId(const QString &id);
     Rule *getRuleForName(const QString &name);
-    void addSensorNode(const deCONZ::Node *node);
+    void addSensorNode(const deCONZ::Node *node, const deCONZ::NodeEvent *event = 0);
     void addSensorNode(const deCONZ::Node *node, const SensorFingerprint &fingerPrint, const QString &type, const QString &modelId, const QString &manufacturer);
     void checkUpdatedFingerPrint(const deCONZ::Node *node, quint8 endpoint, Sensor *sensorNode);
-    void checkSensorNodeReachable(Sensor *sensor);
+    void checkSensorNodeReachable(Sensor *sensor, const deCONZ::NodeEvent *event = 0);
     void checkSensorButtonEvent(Sensor *sensor, const deCONZ::ApsDataIndication &ind, const deCONZ::ZclFrame &zclFrame);
     void updateSensorNode(const deCONZ::NodeEvent &event);
+    void updateSensorLightLevel(Sensor &sensor, quint16 measuredValue);
     bool isDeviceSupported(const deCONZ::Node *node, const QString &modelId);
     Sensor *getSensorNodeForAddressAndEndpoint(const deCONZ::Address &addr, quint8 ep);
     Sensor *getSensorNodeForAddress(quint64 extAddr);
@@ -1001,6 +1034,7 @@ public:
     bool addTaskSetColorLoop(TaskItem &task, bool colorLoopActive, uint8_t speed);
     bool addTaskIdentify(TaskItem &task, uint16_t identifyTime);
     bool addTaskTriggerEffect(TaskItem &task, uint8_t effectIdentifier);
+    bool addTaskWarning(TaskItem &task, uint8_t options, uint16_t duration);
     bool addTaskAddToGroup(TaskItem &task, uint16_t groupId);
     bool addTaskViewGroup(TaskItem &task, uint16_t groupId);
     bool addTaskRemoveFromGroup(TaskItem &task, uint16_t groupId);
@@ -1027,8 +1061,10 @@ public:
     void handleMgmtLqiRspIndication(const deCONZ::ApsDataIndication &ind);
     void handleDEClusterIndication(const deCONZ::ApsDataIndication &ind, deCONZ::ZclFrame &zclFrame);
     void handleZclAttributeReportIndication(const deCONZ::ApsDataIndication &ind, deCONZ::ZclFrame &zclFrame);
+    void handleZclConfigureReportingResponseIndication(const deCONZ::ApsDataIndication &ind, deCONZ::ZclFrame &zclFrame);
     void sendZclDefaultResponse(const deCONZ::ApsDataIndication &ind, deCONZ::ZclFrame &zclFrame, quint8 status);
     void taskToLocalData(const TaskItem &task);
+    void handleZclAttributeReportIndicationXiaomiSpecial(const deCONZ::ApsDataIndication &ind, deCONZ::ZclFrame &zclFrame);
 
     // Modify node attributes
     void setAttributeOnOff(LightNode *lightNode);
@@ -1060,6 +1096,7 @@ public:
     void loadGroupFromDb(Group *group);
     void loadSceneFromDb(Scene *scene);
     void loadSwUpdateStateFromDb();
+    void loadWifiInformationFromDb();
     void loadAllRulesFromDb();
     void loadAllSensorsFromDb();
     void loadAllGatewaysFromDb();
@@ -1111,11 +1148,14 @@ public:
     int gwPermitJoinResend; // permit join of values > 255
     uint16_t gwNetworkOpenDuration; // user setting how long network remains open
     QString gwWifi;     // not-configured | not-installed | not-running | running
+    QVariantList gwWifiAvailable;
     QString gwWifiType; // accesspoint | ad-hoc | client
     QString gwWifiName;
+    QString gwWifiClientName;
     QString gwWifiChannel;
     QString gwWifiIp;
     QString gwWifiPw;
+    QString gwWifiClientPw;
     QString gwProxyAddress;
     quint16 gwProxyPort;
     QString gwTimezone;
@@ -1172,6 +1212,7 @@ public:
     };
     QTimer *fwUpdateTimer;
     QTimer *pollSwUpdateStateTimer;
+    QTimer *pollDatabaseWifiTimer;
     int fwUpdateIdleTimeout;
     bool fwUpdateStartedByUser;
     FW_UpdateState fwUpdateState;
@@ -1403,6 +1444,7 @@ public:
     std::vector<Group> groups;
     std::vector<LightNode> nodes;
     std::vector<Rule> rules;
+    QString daylightSensorId;
     std::vector<Sensor> sensors;
     std::list<TaskItem> tasks;
     std::list<TaskItem> runningTasks;
@@ -1417,9 +1459,6 @@ public:
     QUdpSocket *udpSock;
     QUdpSocket *udpSockOut;
     uint8_t haEndpoint;
-
-    // Wifi connected state
-    QTimer *checkWifiTimer;
 
     // events
     QTimer *eventTimer;

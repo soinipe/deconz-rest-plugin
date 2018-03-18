@@ -115,13 +115,18 @@ bool DeRestPluginPrivate::readBindingTable(RestNodeBase *node, quint8 startIndex
 {
     DBG_Assert(node != 0);
 
-    if (!node && node->node())
+    if (!node || !node->node())
     {
         return false;
     }
 
+    Resource *r = dynamic_cast<Resource*>(node);
+
     // whitelist
     if ((node->address().ext() & macPrefixMask) == deMacPrefix)
+    {
+    }
+    else if (r && r->item(RAttrModelId)->toString().startsWith(QLatin1String("FLS-")))
     {
     }
     else
@@ -150,7 +155,7 @@ bool DeRestPluginPrivate::readBindingTable(RestNodeBase *node, quint8 startIndex
     BindingTableReader btReader;
     btReader.state = BindingTableReader::StateIdle;
     btReader.index = startIndex;
-    btReader.isEndDevice = node->node()->isEndDevice();
+    btReader.isEndDevice = !node->node()->nodeDescriptor().receiverOnWhenIdle();
     btReader.apsReq.dstAddress() = node->address();
 
     bindingTableReaders.push_back(btReader);
@@ -416,6 +421,67 @@ void DeRestPluginPrivate::handleMgmtBindRspIndication(const deCONZ::ApsDataIndic
     }
 }
 
+/*! Handle incoming ZCL configure reporting response.
+ */
+void DeRestPluginPrivate::handleZclConfigureReportingResponseIndication(const deCONZ::ApsDataIndication &ind, deCONZ::ZclFrame &zclFrame)
+{
+    QDateTime now = QDateTime::currentDateTime();
+    std::vector<RestNodeBase*> allNodes;
+    for (Sensor &s : sensors)
+    {
+        allNodes.push_back(&s);
+    }
+
+    for (LightNode &l : nodes)
+    {
+        allNodes.push_back(&l);
+    }
+
+    for (RestNodeBase * restNode : allNodes)
+    {
+        if (restNode->address().ext() != ind.srcAddress().ext())
+        {
+            continue;
+        }
+
+        QDataStream stream(zclFrame.payload());
+        stream.setByteOrder(QDataStream::LittleEndian);
+
+        while (!stream.atEnd())
+        {
+            quint8 status;
+            quint8 direction;
+            quint16 attrId;
+            stream >> status;
+            if (stream.status() == QDataStream::ReadPastEnd)
+            {
+                break;
+            }
+
+            // optional fields
+            stream >> direction;
+            stream >> attrId;
+
+            for (NodeValue &val : restNode->zclValues())
+            {
+                if (val.zclSeqNum != zclFrame.sequenceNumber())
+                {
+                    continue;
+                }
+
+                if (val.minInterval == 0 && val.maxInterval == 0)
+                {
+                    continue;
+                }
+
+                DBG_Printf(DBG_INFO, "ZCL configure reporting rsp seq: %u 0x%016llX for cluster 0x%04X attr 0x%04X status 0x%02X\n", zclFrame.sequenceNumber(), ind.srcAddress().ext(), ind.clusterId(), val.attributeId, status);
+                // mark as succefully configured
+                val.timestampLastConfigured = now;
+            }
+        }
+    }
+}
+
 /*! Handle bind/unbind response.
     \param ind a ZDP Bind/Unbind_rsp
  */
@@ -585,7 +651,7 @@ bool DeRestPluginPrivate::sendConfigureReportingRequest(BindingTask &bt, const s
     apsReq.setTxOptions(deCONZ::ApsTxAcknowledgedTransmission);
 
     deCONZ::ZclFrame zclFrame;
-    zclFrame.setSequenceNumber(zclSeq++);
+    zclFrame.setSequenceNumber(requests.front().zclSeqNum);
     zclFrame.setCommandId(deCONZ::ZclConfigureReportingId);
 
     if (requests.front().manufacturerCode)
@@ -623,7 +689,22 @@ bool DeRestPluginPrivate::sendConfigureReportingRequest(BindingTask &bt, const s
             {
                 stream << rq.reportableChange8bit;
             }
-            DBG_Printf(DBG_INFO, "configure reporting for 0x%016llX, attribute 0x%04X/0x%04X\n", bt.restNode->address().ext(), bt.binding.clusterId, rq.attributeId);
+            else if (rq.reportableChange24bit != 0xFFFFFF)
+            {
+                stream << (qint8) (rq.reportableChange24bit & 0xFF);
+                stream << (qint8) ((rq.reportableChange24bit >> 8) & 0xFF);
+                stream << (qint8) ((rq.reportableChange24bit >> 16) & 0xFF);
+            }
+            else if (rq.reportableChange48bit != 0xFFFFFFFF)
+            {
+                stream << (qint8) (rq.reportableChange48bit & 0xFF);
+                stream << (qint8) ((rq.reportableChange48bit >> 8) & 0xFF);
+                stream << (qint8) ((rq.reportableChange48bit >> 16) & 0xFF);
+                stream << (qint8) ((rq.reportableChange48bit >> 24) & 0xFF);
+                stream << (qint8) 0x00;
+                stream << (qint8) 0x00;
+            }
+            DBG_Printf(DBG_INFO_L2, "configure reporting for 0x%016llX, attribute 0x%04X/0x%04X\n", bt.restNode->address().ext(), bt.binding.clusterId, rq.attributeId);
         }
     }
 
@@ -666,14 +747,31 @@ bool DeRestPluginPrivate::sendConfigureReportingRequest(BindingTask &bt)
         return false;
     }
 
+    QDateTime now = QDateTime::currentDateTime();
     ConfigureReportingRequest rq;
+
+    rq.zclSeqNum = zclSeq++; // to match in configure reporting response handler
 
     if (bt.binding.clusterId == OCCUPANCY_SENSING_CLUSTER_ID)
     {
+        // add values if not already present
+        deCONZ::NumericUnion dummy;
+        dummy.u64 = 0;
+        if (bt.restNode->getZclValue(bt.binding.clusterId, 0x0000).clusterId != bt.binding.clusterId)
+        {
+            bt.restNode->setZclValue(NodeValue::UpdateInvalid, bt.binding.clusterId, 0x0000, dummy);
+        }
+
+        NodeValue &val = bt.restNode->getZclValue(bt.binding.clusterId, 0x0000);
+        val.zclSeqNum = rq.zclSeqNum;
+
         rq.dataType = deCONZ::Zcl8BitBitMap;
         rq.attributeId = 0x0000; // occupancy
-        rq.minInterval = 1;      // value used by Hue bridge
-        rq.maxInterval = 300;    // value used by Hue bridge
+        val.minInterval = 1;     // value used by Hue bridge
+        val.maxInterval = 300;   // value used by Hue bridge
+        rq.minInterval = val.minInterval;
+        rq.maxInterval = val.maxInterval;
+
         if (sendConfigureReportingRequest(bt, {rq}))
         {
             Sensor *sensor = static_cast<Sensor *>(bt.restNode);
@@ -713,10 +811,10 @@ bool DeRestPluginPrivate::sendConfigureReportingRequest(BindingTask &bt)
     else if (bt.binding.clusterId == RELATIVE_HUMIDITY_CLUSTER_ID)
     {
         rq.dataType = deCONZ::Zcl16BitUint;
-        rq.attributeId = 0x0000; // measured value
+        rq.attributeId = 0x0000;       // measured value
         rq.minInterval = 10;
         rq.maxInterval = 300;
-        rq.reportableChange16bit = 20;
+        rq.reportableChange16bit = 100; // resolution: 1%
         return sendConfigureReportingRequest(bt, {rq});
     }
     else if (bt.binding.clusterId == PRESSURE_MEASUREMENT_CLUSTER_ID)
@@ -730,28 +828,48 @@ bool DeRestPluginPrivate::sendConfigureReportingRequest(BindingTask &bt)
     }
     else if (bt.binding.clusterId == POWER_CONFIGURATION_CLUSTER_ID)
     {
-        Sensor *sensor = static_cast<Sensor *>(bt.restNode);
+        Sensor *sensor = dynamic_cast<Sensor *>(bt.restNode);
+
+        // add values if not already present
+        deCONZ::NumericUnion dummy;
+        dummy.u64 = 0;
+        if (bt.restNode->getZclValue(POWER_CONFIGURATION_CLUSTER_ID, 0x0021).attributeId != 0x0021)
+        {
+            bt.restNode->setZclValue(NodeValue::UpdateInvalid, BASIC_CLUSTER_ID, 0x0021, dummy);
+        }
+
+        NodeValue &val = bt.restNode->getZclValue(POWER_CONFIGURATION_CLUSTER_ID, 0x0021);
+        val.zclSeqNum = rq.zclSeqNum;
 
         rq.dataType = deCONZ::Zcl8BitUint;
         rq.attributeId = 0x0021;   // battery percentage remaining
         if (sensor && sensor->modelId() == QLatin1String("SML001")) // Hue motion sensor
         {
-            rq.minInterval = 7200;        // value used by Hue bridge
-            rq.maxInterval = 7200;        // value used by Hue bridge
+            val.minInterval = 7200;       // value used by Hue bridge
+            val.maxInterval = 7200;       // value used by Hue bridge
             rq.reportableChange8bit = 0;  // value used by Hue bridge
         }
         else if (sensor && sensor->modelId().startsWith(QLatin1String("RWL02"))) // Hue dimmer switch
         {
-            rq.minInterval = 300;         // value used by Hue bridge
-            rq.maxInterval = 300;         // value used by Hue bridge
+            val.minInterval = 300;        // value used by Hue bridge
+            val.maxInterval = 300;        // value used by Hue bridge
             rq.reportableChange8bit = 0;  // value used by Hue bridge
         }
         else
         {
-            rq.minInterval = 300;
-            rq.maxInterval = 60 * 45;
+            val.minInterval = 300;
+            val.maxInterval = 60 * 45;
             rq.reportableChange8bit = 1;
         }
+
+        if (val.timestampLastReport.isValid() && (val.timestampLastReport.secsTo(now) < val.maxInterval * 1.5))
+        {
+            return false;
+        }
+
+        rq.minInterval = val.minInterval;
+        rq.maxInterval = val.maxInterval;
+
         return sendConfigureReportingRequest(bt, {rq});
     }
     else if (bt.binding.clusterId == ONOFF_CLUSTER_ID)
@@ -770,6 +888,47 @@ bool DeRestPluginPrivate::sendConfigureReportingRequest(BindingTask &bt)
             rq.maxInterval = 300;
         }
         return sendConfigureReportingRequest(bt, {rq});
+    }
+    else if (bt.binding.clusterId == METERING_CLUSTER_ID)
+    {
+        rq.dataType = deCONZ::Zcl48BitUint;
+        rq.attributeId = 0x0000; // Curent Summation Delivered
+        rq.minInterval = 1;
+        rq.maxInterval = 300;
+        rq.reportableChange48bit = 10; // 0.01 kWh
+
+        ConfigureReportingRequest rq2;
+        rq2.dataType = deCONZ::Zcl24BitInt;
+        rq2.attributeId = 0x0400; // Instantaneous Demand
+        rq2.minInterval = 1;
+        rq2.maxInterval = 300;
+        rq2.reportableChange24bit = 10; // 1 W
+
+        return sendConfigureReportingRequest(bt, {rq, rq2});
+    }
+    else if (bt.binding.clusterId == ELECTRICAL_MEASUREMENT_CLUSTER_ID)
+    {
+        rq.dataType = deCONZ::Zcl16BitInt;
+        rq.attributeId = 0x050B; // Active power
+        rq.minInterval = 1;
+        rq.maxInterval = 300;
+        rq.reportableChange16bit = 10; // 1 W
+
+        ConfigureReportingRequest rq2;
+        rq2.dataType = deCONZ::Zcl16BitUint;
+        rq2.attributeId = 0x0505; // RMS Voltage
+        rq2.minInterval = 1;
+        rq2.maxInterval = 300;
+        rq2.reportableChange16bit = 100; // 1 V
+
+        ConfigureReportingRequest rq3;
+        rq3.dataType = deCONZ::Zcl16BitUint;
+        rq3.attributeId = 0x0508; // RMS Current
+        rq3.minInterval = 1;
+        rq3.maxInterval = 300;
+        rq3.reportableChange16bit = 1; // 0.1 A
+
+        return sendConfigureReportingRequest(bt, {rq, rq2, rq3});
     }
     else if (bt.binding.clusterId == LEVEL_CLUSTER_ID)
     {
@@ -823,23 +982,69 @@ bool DeRestPluginPrivate::sendConfigureReportingRequest(BindingTask &bt)
     else if (bt.binding.clusterId == BASIC_CLUSTER_ID &&
             (bt.restNode->address().ext() & macPrefixMask) == philipsMacPrefix)
     {
+        Sensor *sensor = dynamic_cast<Sensor*>(bt.restNode);
+        if (!sensor)
+        {
+            return false;
+        }
+
+        // only process for presence sensor: don't issue configuration for temperature and illuminance sensors
+        // TODO check if just used for SML001 sensor or also hue dimmer switch?
+        if (sensor->type() != QLatin1String("ZHAPresence"))
+        {
+            return false;
+        }
+
+        deCONZ::NumericUnion dummy;
+        dummy.u64 = 0;
+        // add usertest value if not already present
+        if (bt.restNode->getZclValue(BASIC_CLUSTER_ID, 0x0032).attributeId != 0x0032)
+        {
+            bt.restNode->setZclValue(NodeValue::UpdateInvalid, BASIC_CLUSTER_ID, 0x0032, dummy);
+        }
+        // ledindication value if not already present
+        if (bt.restNode->getZclValue(BASIC_CLUSTER_ID, 0x0033).attributeId != 0x0033)
+        {
+            bt.restNode->setZclValue(NodeValue::UpdateInvalid, BASIC_CLUSTER_ID, 0x0033, dummy);
+        }
+
+        NodeValue &val = bt.restNode->getZclValue(BASIC_CLUSTER_ID, 0x0032);
+
+        val.zclSeqNum = rq.zclSeqNum;
+        val.minInterval = 5;
+        val.maxInterval = 7200;
+
+        if (val.timestampLastReport.isValid() && (val.timestampLastReport.secsTo(now) < val.maxInterval * 1.5))
+        {
+            return false;
+        }
+
+        // already configured? wait for report ...
+        if (val.timestampLastConfigured.isValid() && (val.timestampLastConfigured.secsTo(now) < val.maxInterval * 1.5))
+        {
+            return false;
+        }
+
         rq.dataType = deCONZ::ZclBoolean;
         rq.attributeId = 0x0032; // usertest
-        rq.minInterval = 5;      // value used by Hue bridge
-        rq.maxInterval = 7200;   // value used by Hue bridge
+        rq.minInterval = val.minInterval;   // value used by Hue bridge
+        rq.maxInterval = val.maxInterval;   // value used by Hue bridge
         rq.manufacturerCode = VENDOR_PHILIPS;
 
-        if (sendConfigureReportingRequest(bt, {rq}))
-        {
-            rq = ConfigureReportingRequest();
-            rq.dataType = deCONZ::ZclBoolean;
-            rq.attributeId = 0x0033; // ledindication
-            rq.minInterval = 5;      // value used by Hue bridge
-            rq.maxInterval = 7200;   // value used by Hue bridge
-            rq.manufacturerCode = VENDOR_PHILIPS;
-            return sendConfigureReportingRequest(bt, {rq});
-        }
-        return false;
+        NodeValue &val2 = bt.restNode->getZclValue(BASIC_CLUSTER_ID, 0x0033);
+        val2.zclSeqNum = rq.zclSeqNum;
+        val2.minInterval = 5;
+        val2.maxInterval = 7200;
+
+        ConfigureReportingRequest rq2;
+        rq2 = ConfigureReportingRequest();
+        rq2.dataType = deCONZ::ZclBoolean;
+        rq2.attributeId = 0x0033; // ledindication
+        rq2.minInterval = val2.minInterval; // value used by Hue bridge
+        rq2.maxInterval = val2.maxInterval; // value used by Hue bridge
+        rq2.manufacturerCode = VENDOR_PHILIPS;
+
+        return sendConfigureReportingRequest(bt, {rq, rq2});
     }
     return false;
 }
@@ -878,6 +1083,9 @@ void DeRestPluginPrivate::checkLightBindingsForAttributeReporting(LightNode *lig
         {
         }
         else if (lightNode->manufacturerCode() == VENDOR_IKEA)
+        {
+        }
+        else if (lightNode->manufacturerCode() == VENDOR_EMBER)
         {
         }
         else
@@ -947,7 +1155,7 @@ void DeRestPluginPrivate::checkLightBindingsForAttributeReporting(LightNode *lig
                 }
                 else
                 {
-                    DBG_Printf(DBG_INFO, "create binding for attribute reporting of cluster 0x%04X\n", i->id());
+                    DBG_Printf(DBG_INFO_L2, "create binding for attribute reporting of cluster 0x%04X\n", i->id());
                     queueBindingTask(bt);
                     tasksAdded++;
                 }
@@ -1005,18 +1213,28 @@ void DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
         // Philips
         sensor->modelId() == QLatin1String("SML001") ||
         sensor->modelId().startsWith(QLatin1String("RWL02")) ||
+        // ubisys
+        sensor->modelId().startsWith(QLatin1String("D1")) ||
         // IKEA
         sensor->modelId().startsWith(QLatin1String("TRADFRI")) ||
-        // Centralite
-        sensor->modelId().startsWith(QLatin1String("3328-G")))
+        // Heiman
+        sensor->modelId().startsWith(QLatin1String("SmartPlug")) ||
+        sensor->modelId().startsWith(QLatin1String("CO_")) ||
+        sensor->modelId().startsWith(QLatin1String("DOOR_")) ||
+        sensor->modelId().startsWith(QLatin1String("PIR_")) ||
+        sensor->modelId().startsWith(QLatin1String("GAS_")) ||
+        sensor->modelId().startsWith(QLatin1String("TH-H_")) ||
+        sensor->modelId().startsWith(QLatin1String("TH-T_")) ||
+        sensor->modelId().startsWith(QLatin1String("SMOK_")) ||
+        sensor->modelId().startsWith(QLatin1String("WATER_")))
     {
         endDeviceSupported = true;
         sensor->setMgmtBindSupported(false);
     }
 
-    if (!endDeviceSupported && sensor->node()->isEndDevice())
+    if (!endDeviceSupported)
     {
-        DBG_Printf(DBG_INFO, "don't create binding for attribute reporting of end-device %s\n", qPrintable(sensor->name()));
+        DBG_Printf(DBG_INFO_L2, "don't create binding for attribute reporting of end-device %s\n", qPrintable(sensor->name()));
         return;
     }
 
@@ -1025,7 +1243,7 @@ void DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
     {
         if (sensor->modelId().startsWith(QLatin1String("FLS-")))
         {
-            DBG_Printf(DBG_INFO, "don't check binding for attribute reporting of %s (otau busy)\n", qPrintable(sensor->name()));
+            DBG_Printf(DBG_INFO_L2, "don't check binding for attribute reporting of %s (otau busy)\n", qPrintable(sensor->name()));
             return;
         }
     }
@@ -1035,8 +1253,7 @@ void DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
     // whitelist by Model ID
     if (gwReportingEnabled)
     {
-        if (sensor->modelId().startsWith(QLatin1String("FLS-NB")) ||
-            endDeviceSupported)
+        if (sensor->modelId().startsWith(QLatin1String("FLS-NB")) || endDeviceSupported)
         {
             action = BindingTask::ActionBind;
         }
@@ -1081,6 +1298,11 @@ void DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
         else if (*i == POWER_CONFIGURATION_CLUSTER_ID)
         {
             val = sensor->getZclValue(*i, 0x0021); // battery percentage remaining
+
+            if (val.timestampLastConfigured.isValid() && val.timestampLastConfigured.secsTo(now) < (val.maxInterval * 1.5))
+            {
+                continue;
+            }
         }
         else if (*i == VENDOR_CLUSTER_ID)
         {
@@ -1091,25 +1313,42 @@ void DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
         }
         else if (*i == BASIC_CLUSTER_ID)
         {
-            if (sensor->modelId() == QLatin1String("SML001")) // Hue motion sensor
+            if (sensor->modelId() == QLatin1String("SML001") && // Hue motion sensor
+                sensor->type() == QLatin1String("ZHAPresence"))
             {
                 val = sensor->getZclValue(*i, 0x0032); // usertest
                 // val = sensor->getZclValue(*i, 0x0033); // ledindication
+
+                if (val.timestampLastConfigured.isValid() && val.timestampLastConfigured.secsTo(now) < (val.maxInterval * 1.5))
+                {
+                    continue;
+                }
             }
             else
             {
                 continue;
             }
         }
+        else if (*i == METERING_CLUSTER_ID)
+        {
+            val = sensor->getZclValue(*i, 0x0000); // Curent Summation Delivered
+
+        }
+        else if (*i == ELECTRICAL_MEASUREMENT_CLUSTER_ID)
+        {
+            val = sensor->getZclValue(*i, 0x050b); // Active power
+        }
+
+        quint16 maxInterval = (val.maxInterval > 0) ? (val.maxInterval * 1.5) : (60 * 45);
 
         if (val.timestampLastReport.isValid() &&
-            val.timestampLastReport.secsTo(now) < (60 * 45)) // got update in timely manner
+            val.timestampLastReport.secsTo(now) < maxInterval) // got update in timely manner
         {
-            DBG_Printf(DBG_INFO, "binding for attribute reporting of cluster 0x%04X seems to be active\n", (*i));
+            DBG_Printf(DBG_INFO_L2, "binding for attribute reporting of cluster 0x%04X seems to be active\n", (*i));
             continue;
         }
 
-        if (sensor->node()->isEndDevice() && sensor->lastRx().secsTo(now) > 3)
+        if (!sensor->node()->nodeDescriptor().receiverOnWhenIdle() && sensor->lastRx().secsTo(now) > 3)
         {
             DBG_Printf(DBG_INFO, "skip binding for attribute reporting of cluster 0x%04X (end-device might sleep)\n", (*i));
             return;
@@ -1134,7 +1373,6 @@ void DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
             }
         }
 
-
         switch (*i)
         {
         case POWER_CONFIGURATION_CLUSTER_ID:
@@ -1143,10 +1381,12 @@ void DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
         case TEMPERATURE_MEASUREMENT_CLUSTER_ID:
         case RELATIVE_HUMIDITY_CLUSTER_ID:
         case PRESSURE_MEASUREMENT_CLUSTER_ID:
+        case METERING_CLUSTER_ID:
+        case ELECTRICAL_MEASUREMENT_CLUSTER_ID:
         case VENDOR_CLUSTER_ID:
         case BASIC_CLUSTER_ID:
         {
-            DBG_Printf(DBG_INFO, "0x%016llX (%s) create binding for attribute reporting of cluster 0x%04X on endpoint 0x%02X\n",
+            DBG_Printf(DBG_INFO_L2, "0x%016llX (%s) create binding for attribute reporting of cluster 0x%04X on endpoint 0x%02X\n",
                        sensor->address().ext(), qPrintable(sensor->modelId()), (*i), srcEndpoint);
 
             BindingTask bindingTask;
@@ -1173,7 +1413,7 @@ void DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
 
             if (bnd.dstEndpoint > 0) // valid gateway endpoint?
             {
-              queueBindingTask(bindingTask);
+                queueBindingTask(bindingTask);
             }
         }
             break;
@@ -1213,9 +1453,9 @@ void DeRestPluginPrivate::checkSensorBindingsForClientClusters(Sensor *sensor)
     }
 
     QDateTime now = QDateTime::currentDateTime();
-    if (sensor->node()->isEndDevice() && sensor->lastRx().secsTo(now) > 10)
+    if (!sensor->node()->nodeDescriptor().receiverOnWhenIdle() && sensor->lastRx().secsTo(now) > 10)
     {
-      DBG_Printf(DBG_INFO, "skip check bindings for client clusters (end-device %s might sleep)\n", qPrintable(sensor->modelId()));
+        DBG_Printf(DBG_INFO, "skip check bindings for client clusters (end-device might sleep)\n");
         return;
     }
 
@@ -1276,7 +1516,6 @@ void DeRestPluginPrivate::checkSensorBindingsForClientClusters(Sensor *sensor)
     }
     else
     {
-        DBG_Printf(DBG_INFO, "No binding created for  %s\n", qPrintable(sensor->modelId()));
         return;
     }
 
@@ -1298,7 +1537,7 @@ void DeRestPluginPrivate::checkSensorBindingsForClientClusters(Sensor *sensor)
 
     for (; i != end; ++i)
     {
-        DBG_Printf(DBG_INFO, "0x%016llX (%s) create binding for client cluster 0x%04X on endpoint 0x%02X\n",
+        DBG_Printf(DBG_INFO_L2, "0x%016llX (%s) create binding for client cluster 0x%04X on endpoint 0x%02X\n",
                    sensor->address().ext(), qPrintable(sensor->modelId()), (*i), sensor->fingerPrint().endpoint);
 
         BindingTask bindingTask;
@@ -1574,7 +1813,7 @@ void DeRestPluginPrivate::bindingTimerFired()
             else
             {
                 // too harsh?
-                DBG_Printf(DBG_INFO, "failed to send bind/unbind request. drop\n");
+                DBG_Printf(DBG_INFO_L2, "failed to send bind/unbind request. drop\n");
                 i->state = BindingTask::StateFinished;
             }
         }
@@ -1588,19 +1827,19 @@ void DeRestPluginPrivate::bindingTimerFired()
                 {
                     if (i->restNode && !i->restNode->isAvailable())
                     {
-                        DBG_Printf(DBG_INFO, "giveup binding srcAddr: %llX (not available)\n", i->binding.srcAddress);
+                        DBG_Printf(DBG_INFO_L2, "giveup binding srcAddr: %llX (not available)\n", i->binding.srcAddress);
                         i->state = BindingTask::StateFinished;
                     }
                     else
                     {
-                        DBG_Printf(DBG_INFO, "binding/unbinding timeout srcAddr: %llX, retry\n", i->binding.srcAddress);
+                        DBG_Printf(DBG_INFO_L2, "binding/unbinding timeout srcAddr: %llX, retry\n", i->binding.srcAddress);
                         i->state = BindingTask::StateIdle;
                         i->timeout = BindingTask::Timeout;
                     }
                 }
                 else
                 {
-                    DBG_Printf(DBG_INFO, "giveup binding srcAddr: %llX\n", i->binding.srcAddress);
+                    DBG_Printf(DBG_INFO_L2, "giveup binding srcAddr: %llX\n", i->binding.srcAddress);
                     i->state = BindingTask::StateFinished;
                 }
             }
@@ -1640,7 +1879,7 @@ void DeRestPluginPrivate::bindingTimerFired()
                     }
                     i->timeout = BindingTask::Timeout;
 
-                    DBG_Printf(DBG_INFO, "%s check timeout, retries = %d (srcAddr: 0x%016llX cluster: 0x%04X)\n",
+                    DBG_Printf(DBG_INFO_L2, "%s check timeout, retries = %d (srcAddr: 0x%016llX cluster: 0x%04X)\n",
                                (i->action == BindingTask::ActionBind ? "bind" : "unbind"), i->retries, i->binding.srcAddress, i->binding.clusterId);
 
                     bindingQueue.push_back(*i);
@@ -1649,8 +1888,8 @@ void DeRestPluginPrivate::bindingTimerFired()
                 }
                 else
                 {
-                    DBG_Printf(DBG_INFO, "giveup binding\n");
-                    DBG_Printf(DBG_INFO, "giveup %s (srcAddr: 0x%016llX cluster: 0x%04X)\n",
+                    DBG_Printf(DBG_INFO_L2, "giveup binding\n");
+                    DBG_Printf(DBG_INFO_L2, "giveup %s (srcAddr: 0x%016llX cluster: 0x%04X)\n",
                                (i->action == BindingTask::ActionBind ? "bind" : "unbind"), i->binding.srcAddress, i->binding.clusterId);
                     i->state = BindingTask::StateFinished;
                 }
@@ -1829,7 +2068,7 @@ void DeRestPluginPrivate::bindingToRuleTimerFired()
         }
         else
         {
-            DBG_Printf(DBG_INFO, "Binding to Rule no LightNode found for dstAddress: %s\n",
+            DBG_Printf(DBG_INFO_L2, "Binding to Rule no LightNode found for dstAddress: %s\n",
                        qPrintable(QString("0x%1").arg(bnd.dstAddress.ext, 16,16, QChar('0'))));
             return;
         }

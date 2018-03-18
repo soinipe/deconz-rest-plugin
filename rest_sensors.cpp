@@ -273,21 +273,30 @@ int DeRestPluginPrivate::createSensor(const ApiRequest &req, ApiResponse &rsp)
         sensor.setSwVersion(map["swversion"].toString());
         sensor.setType(type);
 
-        if      (type == QLatin1String("CLIPSwitch")) { item = sensor.addItem(DataTypeInt32, RStateButtonEvent); item->setValue(0); }
-        else if (type == QLatin1String("CLIPOpenClose")) { item = sensor.addItem(DataTypeBool, RStateOpen); item->setValue(false); }
+        if      (type == QLatin1String("CLIPAlarm")) { item = sensor.addItem(DataTypeBool, RStateAlarm); item->setValue(false); }
+        else if (type == QLatin1String("CLIPCarbonMonoxide")) { item = sensor.addItem(DataTypeBool, RStateCarbonMonoxide); item->setValue(false); }
+        else if (type == QLatin1String("CLIPConsumption")) { item = sensor.addItem(DataTypeInt64, RStateConsumption); item->setValue(0); }
+        else if (type == QLatin1String("CLIPFire")) { item = sensor.addItem(DataTypeBool, RStateFire); item->setValue(false); }
         else if (type == QLatin1String("CLIPGenericFlag")) { item = sensor.addItem(DataTypeBool, RStateFlag); item->setValue(false); }
         else if (type == QLatin1String("CLIPGenericStatus")) { item = sensor.addItem(DataTypeInt32, RStateStatus); item->setValue(0); }
-        else if (type == QLatin1String("CLIPPresence")) { item = sensor.addItem(DataTypeBool, RStatePresence); item->setValue(false);
-                                                          item = sensor.addItem(DataTypeUInt16, RConfigDuration); item->setValue(0); }
+        else if (type == QLatin1String("CLIPHumidity")) { item = sensor.addItem(DataTypeUInt16, RStateHumidity); item->setValue(0); }
         else if (type == QLatin1String("CLIPLightLevel")) { item = sensor.addItem(DataTypeUInt16, RStateLightLevel); item->setValue(0);
                                                             item = sensor.addItem(DataTypeUInt32, RStateLux); item->setValue(0);
                                                             item = sensor.addItem(DataTypeBool, RStateDark); item->setValue(true);
                                                             item = sensor.addItem(DataTypeBool, RStateDaylight); item->setValue(false);
                                                             item = sensor.addItem(DataTypeUInt16, RConfigTholdDark); item->setValue(R_THOLDDARK_DEFAULT);
                                                             item = sensor.addItem(DataTypeUInt16, RConfigTholdOffset); item->setValue(R_THOLDOFFSET_DEFAULT); }
-        else if (type == QLatin1String("CLIPTemperature")) { item = sensor.addItem(DataTypeInt16, RStateTemperature); item->setValue(0); }
-        else if (type == QLatin1String("CLIPHumidity")) { item = sensor.addItem(DataTypeUInt16, RStateHumidity); item->setValue(0); }
+        else if (type == QLatin1String("CLIPOpenClose")) { item = sensor.addItem(DataTypeBool, RStateOpen); item->setValue(false); }
+        else if (type == QLatin1String("CLIPPower")) { item = sensor.addItem(DataTypeInt16, RStatePower); item->setValue(0);
+                                                       item = sensor.addItem(DataTypeUInt16, RStateVoltage); item->setValue(0);
+                                                       item = sensor.addItem(DataTypeUInt16, RStateCurrent); item->setValue(0); }
+        else if (type == QLatin1String("CLIPPresence")) { item = sensor.addItem(DataTypeBool, RStatePresence); item->setValue(false);
+                                                          item = sensor.addItem(DataTypeUInt16, RConfigDuration); item->setValue(60); }
         else if (type == QLatin1String("CLIPPressure")) { item = sensor.addItem(DataTypeInt16, RStatePressure); item->setValue(0); }
+        else if (type == QLatin1String("CLIPSwitch")) { item = sensor.addItem(DataTypeInt32, RStateButtonEvent); item->setValue(0); }
+        else if (type == QLatin1String("CLIPTemperature")) { item = sensor.addItem(DataTypeInt16, RStateTemperature); item->setValue(0);
+                                                             item = sensor.addItem(DataTypeInt16, RConfigOffset); item->setValue(0); }
+        else if (type == QLatin1String("CLIPWater")) { item = sensor.addItem(DataTypeBool, RStateWater); item->setValue(false); }
         else
         {
             rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors"), QString("invalid value, %1, for parameter, type").arg(type)));
@@ -467,6 +476,162 @@ int DeRestPluginPrivate::createSensor(const ApiRequest &req, ApiResponse &rsp)
                     return REQ_READY_SEND;
                 }
             }
+            if (state.contains("alarm"))
+            {
+                item = sensor.item(RStateAlarm);
+                if (!item)
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors"), QString("parameter, alarm, not available")));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+
+                if (!item->setValue(state["alarm"]))
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/state"), QString("invalid value, %1, for parameter alarm").arg(state["alarm"].toString())));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+            }
+            if (state.contains("carbonmonoxide"))
+            {
+                item = sensor.item(RStateCarbonMonoxide);
+                if (!item)
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors"), QString("parameter, carbonmonoxide, not available")));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+
+                if (!item->setValue(state["carbonmonoxide"]))
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/state"), QString("invalid value, %1, for parameter carbonmonoxide").arg(state["carbonmonoxide"].toString())));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+            }
+            if (state.contains("fire"))
+            {
+                item = sensor.item(RStateFire);
+                if (!item)
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors"), QString("parameter, fire, not available")));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+
+                if (!item->setValue(state["fire"]))
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/state"), QString("invalid value, %1, for parameter fire").arg(state["fire"].toString())));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+            }
+            if (state.contains("water"))
+            {
+                item = sensor.item(RStateWater);
+                if (!item)
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors"), QString("parameter, water, not available")));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+
+                if (!item->setValue(state["water"]))
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/state"), QString("invalid value, %1, for parameter water").arg(state["water"].toString())));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+            }
+            if (state.contains("lowbattery"))
+            {
+                item = sensor.addItem(DataTypeBool, RStateLowBattery);
+                if (!item->setValue(state["lowbattery"]))
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/state"), QString("invalid value, %1, for parameter lowbattery").arg(state["lowbattery"].toString())));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+            }
+            if (state.contains("tampered"))
+            {
+                item = sensor.addItem(DataTypeBool, RStateTampered);
+                if (!item->setValue(state["tampered"]))
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/state"), QString("invalid value, %1, for parameter tampered").arg(state["tampered"].toString())));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+            }
+            if (state.contains("consumption"))
+            {
+                item = sensor.item(RStateConsumption);
+                if (!item)
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors"), QString("parameter, consumption, not available")));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+
+                if (!item->setValue(state["consumption"]))
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/state"), QString("invalid value, %1, for parameter consumption").arg(state["consumption"].toString())));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+            }
+            if (state.contains("power"))
+            {
+                item = sensor.item(RStatePower);
+                if (!item)
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors"), QString("parameter, power, not available")));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+
+                if (!item->setValue(state["power"]))
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/state"), QString("invalid value, %1, for parameter power").arg(state["power"].toString())));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+            }
+            if (state.contains("voltage"))
+            {
+                item = sensor.item(RStateVoltage);
+                if (!item)
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors"), QString("parameter, voltage, not available")));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+
+                if (!item->setValue(state["voltage"]))
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/state"), QString("invalid value, %1, for parameter voltage").arg(state["voltage"].toString())));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+            }
+            if (state.contains("current"))
+            {
+                item = sensor.item(RStateCurrent);
+                if (!item)
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors"), QString("parameter, current, not available")));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+
+                if (!item->setValue(state["current"]))
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/state"), QString("invalid value, %1, for parameter current").arg(state["current"].toString())));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+            }
 
         }
 
@@ -487,7 +652,7 @@ int DeRestPluginPrivate::createSensor(const ApiRequest &req, ApiResponse &rsp)
 
             for (; pi != pend; ++pi)
             {
-                if(!((pi.key() == "on") || (pi.key() == "reachable") || (pi.key() == "url") || (pi.key() == "battery") || (pi.key() == "duration")))
+                if(!((pi.key() == "offset") || (pi.key() == "on") || (pi.key() == "reachable") || (pi.key() == "url") || (pi.key() == "battery") || (pi.key() == "duration") || (pi.key() == "delay")))
                 {
                     rsp.list.append(errorToMap(ERR_PARAMETER_NOT_AVAILABLE, QString("/sensors/%2").arg(pi.key()), QString("parameter, %1, not available").arg(pi.key())));
                     rsp.httpStatus = HttpStatusBadRequest;
@@ -495,6 +660,17 @@ int DeRestPluginPrivate::createSensor(const ApiRequest &req, ApiResponse &rsp)
                 }
             }
 
+            if (config.contains("offset"))
+            {
+                item = sensor.addItem(DataTypeInt16, RConfigOffset);
+
+                if (!item || !item->setValue(config["offset"]))
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/config"), QString("invalid value, %1, for parameter offset").arg(config["offset"].toString())));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+            }
             if (config.contains("on"))
             {
                 item = sensor.item(RConfigOn);
@@ -527,7 +703,18 @@ int DeRestPluginPrivate::createSensor(const ApiRequest &req, ApiResponse &rsp)
 
                 if (!item || !item->setValue(config["duration"]))
                 {
-                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/config"), QString("invalid value, %1, for parameter battery").arg(config["battery"].toString())));
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/config"), QString("invalid value, %1, for parameter duration").arg(config["duration"].toString())));
+                    rsp.httpStatus = HttpStatusBadRequest;
+                    return REQ_READY_SEND;
+                }
+            }
+            if (config.contains("delay"))
+            {
+                item = sensor.item(RConfigDelay);
+
+                if (!item || !item->setValue(config["delay"]))
+                {
+                    rsp.list.append(errorToMap(ERR_INVALID_VALUE, QString("/sensors/config"), QString("invalid value, %1, for parameter delay").arg(config["delay"].toString())));
                     rsp.httpStatus = HttpStatusBadRequest;
                     return REQ_READY_SEND;
                 }
@@ -710,6 +897,8 @@ int DeRestPluginPrivate::changeSensorConfig(const ApiRequest &req, ApiResponse &
     Sensor *sensor = getSensorNodeForId(id);
     bool ok;
     bool updated = false;
+    bool offsetUpdated = false;
+    qint16 offset = 0;
     bool tholdUpdated = false;
     uint8_t pendingMask = 0;
     QVariant var = Json::parse(req.content, ok);
@@ -779,6 +968,10 @@ int DeRestPluginPrivate::changeSensorConfig(const ApiRequest &req, ApiResponse &
             {
                 QVariant val = map[pi.key()];
 
+                if (rid.suffix == RConfigOffset)
+                {
+                    offset -= item->toNumber();
+                }
                 if (rid.suffix == RConfigAlert)
                 {
                     if (val == "none")
@@ -835,11 +1028,25 @@ int DeRestPluginPrivate::changeSensorConfig(const ApiRequest &req, ApiResponse &
                         {
                             tholdUpdated = true;
                         }
-                        else if (rid.suffix == RConfigDuration && sensor->modelId() == QLatin1String("SML001")) // Hue motion sensor
+                        else if (rid.suffix == RConfigOffset)
                         {
-                            pendingMask |= R_PENDING_DURATION;
-                            sensor->enableRead(WRITE_DURATION);
-                            sensor->setNextReadTime(WRITE_DURATION, QTime::currentTime());
+                            offsetUpdated = true;
+                            offset += item->toNumber();
+                        }
+                        else if (rid.suffix == RConfigDelay && sensor->modelId() == QLatin1String("SML001")) // Hue motion sensor
+                        {
+                            pendingMask |= R_PENDING_DELAY;
+                            sensor->enableRead(WRITE_DELAY);
+                            sensor->setNextReadTime(WRITE_DELAY, QTime::currentTime());
+                        }
+                        else if (rid.suffix == RConfigDuration && sensor->modelId().startsWith(QLatin1String("FLS-NB")))
+                        {
+                            DBG_Printf(DBG_INFO, "Force read of occupaction delay for sensor %s\n", qPrintable(sensor->address().toStringExt()));
+                            sensor->enableRead(READ_OCCUPANCY_CONFIG);
+                            sensor->setNextReadTime(READ_OCCUPANCY_CONFIG, queryTime.addSecs(1));
+                            queryTime = queryTime.addSecs(1);
+                            Q_Q(DeRestPlugin);
+                            q->startZclAttributeTimer(0);
                         }
                         else if (rid.suffix == RConfigLedIndication)
                         {
@@ -932,6 +1139,20 @@ int DeRestPluginPrivate::changeSensorConfig(const ApiRequest &req, ApiResponse &
         }
     }
 
+    if (offsetUpdated)
+    {
+        ResourceItem *item = sensor->item(RStateTemperature);
+        if (item)
+        {
+            qint16 temp = item->toNumber();
+            temp += offset;
+            if (item->setValue(temp)) {
+                Event e(RSensors, RStateTemperature, sensor->id(), item);
+                enqueueEvent(e);
+            }
+        }
+    }
+
     if (pendingMask)
     {
       ResourceItem *item = sensor->item(RConfigPending);
@@ -942,18 +1163,6 @@ int DeRestPluginPrivate::changeSensorConfig(const ApiRequest &req, ApiResponse &
           item->setValue(mask);
       }
     }
-
-    // TODO handle this in event, this is relevant for FLS-NB.
-
-//    if (config.duration() != duration)
-//    {
-//        config.setDuration(duration);
-//        DBG_Printf(DBG_INFO, "Force read/write of occupaction delay for sensor %s\n", qPrintable(sensor->address().toStringExt()));
-//        sensor->enableRead(WRITE_OCCUPANCY_CONFIG);
-//        sensor->setNextReadTime(WRITE_OCCUPANCY_CONFIG, QTime::currentTime());
-//        Q_Q(DeRestPlugin);
-//        q->startZclAttributeTimer(0);
-//    }
 
     rsp.list.append(rspItem);
     updateSensorEtag(sensor);
@@ -1309,9 +1518,9 @@ bool DeRestPluginPrivate::sensorToMap(const Sensor *sensor, QVariantMap &map, bo
         const ResourceItem *item = sensor->itemForIndex(i);
         const ResourceItemDescriptor &rid = item->descriptor();
 
-        if (!item->lastSet().isValid())
+        if (rid.suffix == RConfigLat || rid.suffix == RConfigLong)
         {
-            continue;
+            continue; //  don't return due privacy reasons
         }
 
         if (rid.suffix == RConfigReachable &&
@@ -1328,9 +1537,9 @@ bool DeRestPluginPrivate::sensorToMap(const Sensor *sensor, QVariantMap &map, bo
                 QVariantList pending;
                 uint8_t value = item->toNumber();
 
-                if (value & R_PENDING_DURATION)
+                if (value & R_PENDING_DELAY)
                 {
-                    pending.append("duration");
+                    pending.append("delay");
                 }
                 if (value & R_PENDING_LEDINDICATION)
                 {
@@ -1355,6 +1564,13 @@ bool DeRestPluginPrivate::sensorToMap(const Sensor *sensor, QVariantMap &map, bo
         if (strncmp(rid.suffix, "state/", 6) == 0)
         {
             const char *key = item->descriptor().suffix + 6;
+
+            if (rid.suffix == RStateLastUpdated && !item->lastSet().isValid())
+            {
+                state[key] = QLatin1String("none");
+                continue;
+            }
+
             state[key] = item->toVariant();
         }
     }
@@ -1398,7 +1614,12 @@ bool DeRestPluginPrivate::sensorToMap(const Sensor *sensor, QVariantMap &map, bo
     {
         map["manufacturername"] = sensor->manufacturer();
     }
-    map["uniqueid"] = sensor->uniqueId();
+
+    const ResourceItem *item = sensor->item(RAttrUniqueId);
+    if (item)
+    {
+        map["uniqueid"] = item->toString();
+    }
     map["state"] = state;
     map["config"] = config;
 
@@ -1528,7 +1749,6 @@ void DeRestPluginPrivate::handleSensorEvent(const Event &e)
         checkSensorBindingsForAttributeReporting(sensor);
         checkSensorBindingsForClientClusters(sensor);
 
-        Q_Q(DeRestPlugin);
         pushSensorInfoToCore(sensor);
 
         QVariantMap res;
