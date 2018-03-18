@@ -1217,6 +1217,8 @@ void DeRestPluginPrivate::checkSensorBindingsForAttributeReporting(Sensor *senso
         sensor->modelId().startsWith(QLatin1String("D1")) ||
         // IKEA
         sensor->modelId().startsWith(QLatin1String("TRADFRI")) ||
+        // Centralite
+        sensor->modelId().startsWith(QLatin1String("3328-G")) ||
         // Heiman
         sensor->modelId().startsWith(QLatin1String("SmartPlug")) ||
         sensor->modelId().startsWith(QLatin1String("CO_")) ||
@@ -1516,7 +1518,8 @@ void DeRestPluginPrivate::checkSensorBindingsForClientClusters(Sensor *sensor)
     }
     else
     {
-        return;
+        DBG_Printf(DBG_INFO, "No binding created for  %s\n", qPrintable(sensor->modelId()));
+	return;
     }
 
     // prevent binding action if otau was busy recently
